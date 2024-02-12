@@ -13,3 +13,5 @@ These methods have different strengths and weaknesses in various categories incl
 * intrusiveness of installed system to trail users
 
 The goal of this project is to try another method. Using a microphone to record a short sample of audio each time the motion sensor reports an event and then put that sample through a trained machine learning model to classify it as either a `bike` or `not a bike`.
+
+See the [development plan](/docs/development_plan.md).
