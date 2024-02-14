@@ -60,18 +60,19 @@ class EventSampleRecorder:
                       text="Set Output Directory",
                       command=self.__set_output_directory))
         self.__set_output_directory_button.grid(row=0, column=0,
-                                              sticky=tk.W+tk.E)
+                                                sticky=tk.W+tk.E)
         self.__directory_text_box = tk.Entry(self.__entry_frame, width=100)
         self.__directory_text_box.insert(0, self.__DEFAULT_DIRECTORY_STRING)
         self.__directory_text_box.grid(row=0, column=1,
-                                     sticky=tk.W+tk.E, pady=10)
+                                       sticky=tk.W+tk.E, pady=10)
 
         self.__location_label = tk.Label(self.__entry_frame,
-                                       text="Sample Location")
+                                         text="Sample Location")
         self.__location_label.grid(row=1, column=0, sticky=tk.W+tk.E, pady=10)
         self.__location_text_box = tk.Entry(self.__entry_frame)
         self.__location_text_box.insert(0, self.__DEFAULT_LOCATION_STRING)
-        self.__location_text_box.grid(row=1, column=1, sticky=tk.W+tk.E, pady=10)
+        self.__location_text_box.grid(row=1, column=1,
+                                      sticky=tk.W+tk.E, pady=10)
 
         self.__entry_frame.pack(pady=50)
 
@@ -80,14 +81,13 @@ class EventSampleRecorder:
         self.__button_frame.columnconfigure(1, weight=1)
 
         self.__button_bike = tk.Button(self.__button_frame,
-                                     text="Record \"bike\"",
-                                     font=('Arial', 32),
-                                     command=self.__bike_click_handler)
+                                       text="Record \"bike\"",
+                                       font=('Arial', 32),
+                                       command=self.__bike_click_handler)
         self.__button_bike.grid(row=0, column=0, sticky=tk.W+tk.E)
-        self.__button_not_bike = tk.Button(self.__button_frame,
-                                         text="Record \"notbike\"",
-                                         font=('Arial', 32),
-                                         command=self.__not_bike_click_handler)
+        self.__button_not_bike = tk.Button(
+                self.__button_frame, text="Record \"notbike\"",
+                font=('Arial', 32), command=self.__not_bike_click_handler)
         self.__button_not_bike.grid(row=0, column=1, sticky=tk.W+tk.E)
 
         self.__button_frame.pack(pady=50)
