@@ -95,24 +95,26 @@ class EventSampleRecorder:
         self.__root.mainloop()
 
     def __click_handler(self, bike):
-        if self.__directory_text_box.get() == self.__DEFAULT_DIRECTORY_STRING:
+        directory = self.__directory_text_box.get()
+        location_string = self.__location_text_box.get()
+        if directory == self.__DEFAULT_DIRECTORY_STRING:
             print('No output directory set')
             return
-        bike_string = "bike" if bike else "notbike"
-        timestamp = datetime.datetime.now()
-        timestamp_string = timestamp.strftime("%Y-%m-%d-%H%M%S")
-        location_string = self.__location_text_box.get()
+        if not os.path.exists(directory):
+            print('directory does not exist')
+            return
         if location_string == self.__DEFAULT_LOCATION_STRING:
             print('No location set')
             return
+        
+        bike_string = "bike" if bike else "notbike"
+        timestamp = datetime.datetime.now()
+        timestamp_string = timestamp.strftime("%Y-%m-%d-%H%M%S")
         file_name = (timestamp_string + "_" +
                      location_string + "_" +
                      bike_string + ".wav")
-        if not os.path.exists(self.__directory_text_box.get()):
-            print('directory does not exist')
-            return
-        directory = os.path.join(self.__directory_text_box.get(), file_name)
-        record_sample(directory)
+        full_directory = os.path.join(directory, file_name)
+        record_sample(full_directory)
 
     def __bike_click_handler(self):
         self.__click_handler(True)
