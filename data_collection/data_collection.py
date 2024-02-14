@@ -79,7 +79,7 @@ class EventSampleRecorder:
         self.button_frame.columnconfigure(0, weight=1)
         self.button_frame.columnconfigure(1, weight=1)
 
-        self.button_bike = tk.Button(self.button_frame, 
+        self.button_bike = tk.Button(self.button_frame,
                                      text="Record \"bike\"",
                                      font=('Arial', 32),
                                      command=self.bike_click_handler)
