@@ -108,6 +108,9 @@ class EventSampleRecorder:
         file_name = (timestamp_string + "_" +
                      location_string + "_" +
                      bike_string + ".wav")
+        if not os.path.exists(self.__directory_text_box.get()):
+            print('directory does not exist')
+            return
         directory = os.path.join(self.__directory_text_box.get(), file_name)
         record_sample(directory)
 
