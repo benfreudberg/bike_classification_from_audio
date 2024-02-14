@@ -106,7 +106,7 @@ class EventSampleRecorder:
         if location_string == self.__DEFAULT_LOCATION_STRING:
             print('No location set')
             return
-        
+
         bike_string = "bike" if bike else "notbike"
         timestamp = datetime.datetime.now()
         timestamp_string = timestamp.strftime("%Y-%m-%d-%H%M%S")
