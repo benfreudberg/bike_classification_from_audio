@@ -1,45 +1,13 @@
 import os
-# vscode says pyaudio could not be resolved from source, but the code runs with
-# no problem...
-import pyaudio
-import wave
-import time
 import datetime
 import tkinter as tk
+import threading
+import serial
 from tkinter.filedialog import askdirectory
+import audio_sampling
+import mag_sampling
 
 MS_TO_RECORD = 1000
-
-
-def record_sample(directory):
-    # todo: look into how this works and what options there are
-    AUDIO_FORMAT = pyaudio.paInt16
-    SAMPLING_RATE = 44100  # Hz
-    FRAMES_PER_BUFFER = 1024
-    audio = pyaudio.PyAudio()
-    stream = audio.open(format=AUDIO_FORMAT,
-                        channels=1,
-                        rate=SAMPLING_RATE,
-                        input=True,
-                        frames_per_buffer=FRAMES_PER_BUFFER)
-
-    frames = []
-    t_end = time.time() + MS_TO_RECORD/1000
-    while time.time() < t_end:
-        data = stream.read(FRAMES_PER_BUFFER)
-        frames.append(data)
-
-    stream.stop_stream()
-    stream.close()
-    audio.terminate()
-
-    sound_file = wave.open(directory, "wb")
-    sound_file.setnchannels(1)
-    sound_file.setsampwidth(audio.get_sample_size(AUDIO_FORMAT))
-    sound_file.setframerate(SAMPLING_RATE)
-    sound_file.writeframes(b''.join(frames))
-    sound_file.close()
-    print("Audio file saved: " + directory)
 
 
 class EventSampleRecorder:
@@ -73,6 +41,17 @@ class EventSampleRecorder:
         self.__location_text_box.insert(0, self.__DEFAULT_LOCATION_STRING)
         self.__location_text_box.grid(row=1, column=1,
                                       sticky=tk.W+tk.E, pady=10)
+        
+        self.__connect_mag_button = (
+            tk.Button(self.__entry_frame,
+                      text="Connect Magnetometer",
+                      command=self.__connect_mag))
+        self.__connect_mag_button.grid(row=2, column=0,
+                                       sticky=tk.W+tk.E)
+        self.__mag_com_port_text_box = tk.Entry(self.__entry_frame, width=100)
+        self.__mag_com_port_text_box.insert(0, 'COM5')
+        self.__mag_com_port_text_box.grid(row=2, column=1,
+                                          sticky=tk.W+tk.E, pady=10)
 
         self.__entry_frame.pack(pady=50)
 
@@ -106,15 +85,24 @@ class EventSampleRecorder:
         if location_string == self.__DEFAULT_LOCATION_STRING:
             print('No location set')
             return
+        # todo: add check boxes for whether to record audio and mag
 
         bike_string = "bike" if bike else "notbike"
         timestamp = datetime.datetime.now()
         timestamp_string = timestamp.strftime("%Y-%m-%d-%H%M%S")
         file_name = (timestamp_string + "_" +
                      location_string + "_" +
-                     bike_string + ".wav")
+                     bike_string)
         full_directory = os.path.join(directory, file_name)
-        record_sample(full_directory)
+
+        t1 = threading.Thread(target=audio_sampling.record_sample,
+                              args=(full_directory, MS_TO_RECORD))
+        t2 = threading.Thread(target=self.__mag_sample_recorder.record_sample,
+                              args=(full_directory, MS_TO_RECORD))
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
 
     def __bike_click_handler(self):
         self.__click_handler(True)
@@ -128,3 +116,7 @@ class EventSampleRecorder:
         directory = os.path.normpath(directory)
         self.__directory_text_box.delete(0, tk.END)
         self.__directory_text_box.insert(0, directory)
+    
+    def __connect_mag(self):
+        self.__mag_sample_recorder = mag_sampling.MagSampleRecorder(
+                self.__mag_com_port_text_box.get())
