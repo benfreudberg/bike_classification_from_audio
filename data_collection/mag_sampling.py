@@ -38,9 +38,9 @@ class MagSampleRecorder:
             raw_data_string = self.ser.readline().decode("utf-8")
             values.append(parse_serial(raw_data_string))
         np_values = np.array(values)
-        plt.plot(np_values[:,0])
-        plt.plot(np_values[:,1])
-        plt.plot(np_values[:,2])
+        plt.plot(np_values[:, 0])
+        plt.plot(np_values[:, 1])
+        plt.plot(np_values[:, 2])
         plt.show()
 
 

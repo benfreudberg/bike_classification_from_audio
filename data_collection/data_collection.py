@@ -2,7 +2,6 @@ import os
 import datetime
 import tkinter as tk
 import threading
-import serial
 from tkinter.filedialog import askdirectory
 import audio_sampling
 import mag_sampling
@@ -41,7 +40,7 @@ class EventSampleRecorder:
         self.__location_text_box.insert(0, self.__DEFAULT_LOCATION_STRING)
         self.__location_text_box.grid(row=1, column=1,
                                       sticky=tk.W+tk.E, pady=10)
-        
+
         self.__connect_mag_button = (
             tk.Button(self.__entry_frame,
                       text="Connect Magnetometer",
@@ -116,7 +115,7 @@ class EventSampleRecorder:
         directory = os.path.normpath(directory)
         self.__directory_text_box.delete(0, tk.END)
         self.__directory_text_box.insert(0, directory)
-    
+
     def __connect_mag(self):
         self.__mag_sample_recorder = mag_sampling.MagSampleRecorder(
                 self.__mag_com_port_text_box.get())
