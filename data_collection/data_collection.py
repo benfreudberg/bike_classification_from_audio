@@ -106,7 +106,7 @@ class EventSampleRecorder:
             try:
                 self.__mag_sample_recorder
             except AttributeError:
-                print('Mangetometer port not connected')
+                print('Magnetometer port not connected')
                 return
         if not record_audio and not record_mag:
             print('not set to record audio or magnetometer data')
