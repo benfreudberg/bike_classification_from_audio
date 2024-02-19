@@ -40,9 +40,6 @@ class MagSampleRecorder:
         plt.plot(np_values[:, 2])
         plt.show()
 
-    def is_connected(self):
-        return self.__ser is not None
-
 
 def main():
     msr = MagSampleRecorder('COM5')  # change to match your local machine
