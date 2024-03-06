@@ -5,6 +5,7 @@ The [Santa Cruz Mountains Trail Stewardship](https://santacruztrails.org/) organ
 * magnetic sensors
 * cameras
 * microphones
+* inductive loops
 
 These methods have different strengths and weaknesses in various categories including:
 * cost to install/maintain
@@ -14,4 +15,6 @@ These methods have different strengths and weaknesses in various categories incl
 
 The goal of this project is do further research into two of these options: magnetic sensors and microphones. A sensitive magnetometer can detect the steel in a passing bike's drivetrain, though the useful range of this method may be too short. A microphone can record a short sample of audio each time the motion sensor reports an event and then put that sample through a trained machine learning model to classify it as either a `bike` or `not a bike`.
 
-See the [development plan](/docs/development_plan.md).
+Documents:  
+* [development plan](./docs/development_plan.md)  
+* [preliminary magnetometer testing report](./docs/preliminary_magnetometer_testing_report.md)

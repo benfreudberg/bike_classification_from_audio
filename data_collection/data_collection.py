@@ -8,6 +8,7 @@ import mag_sampling
 import serial
 
 MS_TO_RECORD = 1000
+DEFAULT_COM_PORT = 'COM5'
 
 
 class EventSampleRecorder:
@@ -50,7 +51,7 @@ class EventSampleRecorder:
         self.__connect_mag_button.grid(
             row=2, column=0, sticky=tk.W+tk.E)
         self.__mag_com_port_text_box = tk.Entry(self.__entry_frame, width=100)
-        self.__mag_com_port_text_box.insert(0, 'COM5')
+        self.__mag_com_port_text_box.insert(0, DEFAULT_COM_PORT)
         self.__mag_com_port_text_box.grid(
             row=2, column=1, sticky=tk.W+tk.E, pady=10)
 
