@@ -243,9 +243,9 @@ def main():
 
     results = np.array([[0, 0], [0, 0]])
     for file in file_list:
-        if '_street' not in file and '_baseline' not in file:
         # if '143844' in file:
         # if '143625' in file:
+        if '_street' not in file and '_baseline' not in file:
             # plot_axes_vs_time(file)
             # plot_axes_vs_time_recentered(file)
             # plot_axes_vs_time_recentered_filtered(file)
