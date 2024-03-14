@@ -64,7 +64,7 @@ The less than stellar recall (`true positives / total positives` = `8/15`) is no
 
 While the signal from the bike is very clear when the bike passes extremely close to the sensor, at just one meter away it is considerably diminished. Clever filtering is required to detect bikes at any useful range. But even so, a meter or two is about the best we can expect.
 
-The [MMC5983MA](./datasheets/Memsic_09102019_MMC5983MA_Datasheet_Rev_A-1635338.pdf) represents the best low-cost magnetometer I could find and it does appear to be good enough to be useful. It costs about $2 each when bought in bulk. There is another, much more expensive (about 100x more expensive) option ([Honeywell HMC2003 magnetometer](./datasheets/HMC2003.pdf)) that is more sensitive and may provide improved detection range, but it is too expensive for the goals of this project. I have not tested it. Additionally, multiple of the cheaper sensor may be used across the width of a path in order to improve the effective range making the more expensive sensor less competitive.
+The [MMC5983MA](./datasheets/Memsic_09102019_MMC5983MA_Datasheet_Rev_A-1635338.pdf) represents the best low-cost magnetometer I could find and it does appear to be good enough to be useful. It costs about $2 each when bought in bulk. Multiple of this cheap sensor may be used across the width of a path in order to improve the effective range.
 
 We need to collect more real-world data, ideally on some actual multi-use mountain bike and hiking trails. Then we can work on improving the data processing and detection algorithm. We should also run controlled tests to quantify just how much range we can actually get out of this system to inform how the sensors should be installed.
 

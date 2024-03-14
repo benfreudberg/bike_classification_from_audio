@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 
 
 def parse_serial(string):
-    # original string is in the format: "x:%+06d,y:%+06d,z:%+06d\n"
+    # original string is in the format: "x:%+07ld,y:%+07ld,z:%+07ld\n"
     string_splits = string.split(',')
     values = []
     for split in string_splits:
