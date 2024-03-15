@@ -212,6 +212,5 @@ class EventSampleRecorder:
             if not self.__video_recorder.ready:
                 del self.__video_recorder
                 self.__video_check_state.set(0)
-
         else:
             del self.__video_recorder
