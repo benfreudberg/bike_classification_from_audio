@@ -2,7 +2,8 @@ from data_collection import EventSampleRecorder
 
 
 def main():
-    EventSampleRecorder()
+    esr = EventSampleRecorder()
+    del esr
 
 
 if __name__ == "__main__":
