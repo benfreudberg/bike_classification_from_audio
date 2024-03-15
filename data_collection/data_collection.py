@@ -5,10 +5,12 @@ import threading
 from tkinter.filedialog import askdirectory
 import audio_sampling
 import mag_sampling
+import video_sampling
 import serial
 
-MS_TO_RECORD = 1000
+DEFAULT_MS_TO_RECORD = 2000
 DEFAULT_COM_PORT = 'COM5'
+DEFAULT_WEBCAM_NUMBER = 0
 
 
 class EventSampleRecorder:
@@ -17,59 +19,92 @@ class EventSampleRecorder:
 
     def __init__(self):
         self.__root = tk.Tk()
-        self.__root.geometry("1000x500")
+        self.__root.geometry("1000x600")
         self.__root.title("Sample Recording Application")
 
         self.__entry_frame = tk.Frame(self.__root)
         self.__entry_frame.columnconfigure(0, weight=1)
         self.__entry_frame.columnconfigure(1, weight=1)
 
+        self.__sample_duration_label = tk.Label(
+            self.__entry_frame, text="Sample Recording Duration")
+        self.__sample_duration_label.grid(row=0, column=0,
+                                          sticky=tk.W+tk.E, pady=10)
+        self.__sample_duration_text_box = tk.Entry(self.__entry_frame,
+                                                   width=100)
+        self.__sample_duration_text_box.insert(0, DEFAULT_MS_TO_RECORD)
+        self.__sample_duration_text_box.grid(
+            row=0, column=1, sticky=tk.W+tk.E, pady=10)
+
         self.__set_output_directory_button = (
             tk.Button(self.__entry_frame,
                       text="Set Output Directory",
                       command=self.__set_output_directory))
-        self.__set_output_directory_button.grid(row=0, column=0,
+        self.__set_output_directory_button.grid(row=1, column=0,
                                                 sticky=tk.W+tk.E)
         self.__directory_text_box = tk.Entry(self.__entry_frame, width=100)
         self.__directory_text_box.insert(
             0, EventSampleRecorder.__DEFAULT_DIRECTORY_STRING)
         self.__directory_text_box.grid(
-            row=0, column=1, sticky=tk.W+tk.E, pady=10)
+            row=1, column=1, sticky=tk.W+tk.E, pady=10)
 
         self.__location_label = tk.Label(
             self.__entry_frame, text="Sample Location")
-        self.__location_label.grid(row=1, column=0, sticky=tk.W+tk.E, pady=10)
+        self.__location_label.grid(row=2, column=0, sticky=tk.W+tk.E, pady=10)
         self.__location_text_box = tk.Entry(self.__entry_frame)
         self.__location_text_box.insert(0, self.__DEFAULT_LOCATION_STRING)
         self.__location_text_box.grid(
-            row=1, column=1, sticky=tk.W+tk.E, pady=10)
+            row=2, column=1, sticky=tk.W+tk.E, pady=10)
 
         self.__connect_mag_button = (
             tk.Button(self.__entry_frame,
                       text="Connect Magnetometer",
                       command=self.__connect_mag))
         self.__connect_mag_button.grid(
-            row=2, column=0, sticky=tk.W+tk.E)
+            row=3, column=0, sticky=tk.W+tk.E)
         self.__mag_com_port_text_box = tk.Entry(self.__entry_frame, width=100)
         self.__mag_com_port_text_box.insert(0, DEFAULT_COM_PORT)
         self.__mag_com_port_text_box.grid(
-            row=2, column=1, sticky=tk.W+tk.E, pady=10)
+            row=3, column=1, sticky=tk.W+tk.E, pady=10)
+
+        self.__webcam_number_label = tk.Label(
+            self.__entry_frame, text="Webcam Number")
+        self.__webcam_number_label.grid(row=4, column=0,
+                                        sticky=tk.W+tk.E, pady=10)
+        self.__webcam_number_text_box = tk.Entry(self.__entry_frame, width=100)
+        self.__webcam_number_text_box.insert(0, str(DEFAULT_WEBCAM_NUMBER))
+        self.__webcam_number_text_box.grid(
+            row=4, column=1, sticky=tk.W+tk.E, pady=10)
+
+        self.__entry_frame.pack(pady=25)
+
+        self.__checkbox_frame = tk.Frame(self.__root)
+        self.__checkbox_frame.columnconfigure(0, weight=1)
+        self.__checkbox_frame.columnconfigure(1, weight=1)
+        self.__checkbox_frame.columnconfigure(2, weight=1)
 
         self.__mag_check_state = tk.IntVar(value=1)
         self.__audio_check_state = tk.IntVar(value=1)
+        self.__video_check_state = tk.IntVar(value=0)
 
         self.__mag_check_box = tk.Checkbutton(
-            self.__entry_frame, text="Record magnetometer data",
+            self.__checkbox_frame, text="Record magnetometer data",
             variable=self.__mag_check_state)
         self.__audio_check_box = tk.Checkbutton(
-            self.__entry_frame, text="Record audio data",
+            self.__checkbox_frame, text="Record audio data",
             variable=self.__audio_check_state)
+        self.__video_check_box = tk.Checkbutton(
+            self.__checkbox_frame, text="Record video",
+            variable=self.__video_check_state,
+            command=self.__configure_video_recorder)
         self.__mag_check_box.grid(
-            row=3, column=0, sticky=tk.W+tk.E, pady=10)
+            row=0, column=0, sticky=tk.W+tk.E, pady=10)
         self.__audio_check_box.grid(
-            row=4, column=0, sticky=tk.W+tk.E, pady=10)
+            row=0, column=1, sticky=tk.W+tk.E, pady=10)
+        self.__video_check_box.grid(
+            row=0, column=2, sticky=tk.W+tk.E, pady=10)
 
-        self.__entry_frame.pack(pady=50)
+        self.__checkbox_frame.pack()
 
         self.__button_frame = tk.Frame(self.__root)
         self.__button_frame.columnconfigure(0, weight=1)
@@ -94,6 +129,7 @@ class EventSampleRecorder:
         location_string = self.__location_text_box.get()
         record_mag = self.__mag_check_state.get()
         record_audio = self.__audio_check_state.get()
+        record_video = self.__video_check_state.get()
         if directory == EventSampleRecorder.__DEFAULT_DIRECTORY_STRING:
             print('No output directory set')
             return
@@ -119,21 +155,29 @@ class EventSampleRecorder:
                      location_string + "_" +
                      bike_string)
         full_directory = os.path.join(directory, file_name)
+        sample_duration = int(self.__sample_duration_text_box.get())
 
         if record_audio:
             t1 = threading.Thread(
                 target=audio_sampling.record_sample,
-                args=(full_directory, MS_TO_RECORD))
+                args=(full_directory, sample_duration))
             t1.start()
         if record_mag:
             t2 = threading.Thread(
                 target=self.__mag_sample_recorder.record_sample,
-                args=(full_directory, MS_TO_RECORD))
+                args=(full_directory, sample_duration))
             t2.start()
+        if record_video:
+            t3 = threading.Thread(
+                target=self.__video_recorder.record_sample,
+                args=(full_directory, sample_duration))
+            t3.start()
         if record_audio:
             t1.join()
         if record_mag:
             t2.join()
+        if record_video:
+            t3.join()
 
     def __bike_click_handler(self):
         self.__click_handler(True)
@@ -160,3 +204,14 @@ class EventSampleRecorder:
             self.__connect_mag_button.config(state=tk.DISABLED)
         except serial.serialutil.SerialException:
             self.__connect_mag_button.config(fg="red")
+
+    def __configure_video_recorder(self):
+        if self.__video_check_state.get():
+            webcam_number = int(self.__webcam_number_text_box.get())
+            self.__video_recorder = video_sampling.VideoRecorder(webcam_number)
+            if not self.__video_recorder.ready:
+                del self.__video_recorder
+                self.__video_check_state.set(0)
+
+        else:
+            del self.__video_recorder
