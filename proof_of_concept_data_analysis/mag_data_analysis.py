@@ -179,6 +179,8 @@ def fft_analysis(file_name, plot=True):
     mean_value = np.mean(normalized_result)
     mean_smoothed_value = np.mean(normalized_smoothed_result)
 
+    THRESHOLD = 0.1
+
     if plot:
         # Display the normalized elementwise product result
         plt.subplot(3, npdata.shape[1], 2*npdata.shape[1]+1)
@@ -211,7 +213,7 @@ def fft_analysis(file_name, plot=True):
         plt.ylim(0, 1)
 
         # Display the mean with different text colors based on a threshold
-        if mean_smoothed_value < 0.22:
+        if mean_smoothed_value < THRESHOLD:
             mean_smoothed_color = 'green'
         else:
             mean_smoothed_color = 'blue'
@@ -227,10 +229,10 @@ def fft_analysis(file_name, plot=True):
         plt.show()
 
     results = np.array(
-        [[('_bike' in file_name) and (mean_smoothed_value < 0.22),
-          ('_bike' not in file_name) and (mean_smoothed_value < 0.22)],
-         [('_bike' in file_name) and (mean_smoothed_value >= 0.22),
-          ('_bike' not in file_name) and (mean_smoothed_value >= 0.22)]])
+        [[('_bike' in file_name) and (mean_smoothed_value < THRESHOLD),
+          ('_bike' not in file_name) and (mean_smoothed_value < THRESHOLD)],
+         [('_bike' in file_name) and (mean_smoothed_value >= THRESHOLD),
+          ('_bike' not in file_name) and (mean_smoothed_value >= THRESHOLD)]])
     return results
 
 
@@ -245,12 +247,12 @@ def main():
     for file in file_list:
         # if '143844' in file:
         # if '143625' in file:
-        if '_street' not in file and '_baseline' not in file:
+        if '_emt' in file and '_baseline' not in file and '_bottom' in file:
             # plot_axes_vs_time(file)
             # plot_axes_vs_time_recentered(file)
             # plot_axes_vs_time_recentered_filtered(file)
             # plot_mag_3dscatter(file)
-            results += fft_analysis(file, plot=True)
+            results += fft_analysis(file, plot=False)
     print(results)
 
     # for file in street_file_list:

@@ -27,7 +27,7 @@ class EventSampleRecorder:
         self.__entry_frame.columnconfigure(1, weight=1)
 
         self.__sample_duration_label = tk.Label(
-            self.__entry_frame, text="Sample Recording Duration")
+            self.__entry_frame, text="Sample Recording Duration (ms)")
         self.__sample_duration_label.grid(row=0, column=0,
                                           sticky=tk.W+tk.E, pady=10)
         self.__sample_duration_text_box = tk.Entry(self.__entry_frame,
