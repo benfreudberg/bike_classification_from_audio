@@ -5,10 +5,18 @@ from tkinter.filedialog import askdirectory
 import glob
 from scipy.signal import butter, sosfilt
 from scipy.ndimage import gaussian_filter1d
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
+from sklearn.preprocessing import StandardScaler
+import train_and_test
+import binning
+
 
 LOW_PASS_FREQUENCY = 5  # Hz
 FILTER_ORDER = 4
 SAMPLING_RATE = 100
+THRESHOLD = 0.22
 
 
 def get_data_directory():
@@ -179,8 +187,6 @@ def fft_analysis(file_name, plot=True):
     mean_value = np.mean(normalized_result)
     mean_smoothed_value = np.mean(normalized_smoothed_result)
 
-    THRESHOLD = 0.1
-
     if plot:
         # Display the normalized elementwise product result
         plt.subplot(3, npdata.shape[1], 2*npdata.shape[1]+1)
@@ -193,7 +199,7 @@ def fft_analysis(file_name, plot=True):
         plt.ylim(0, 1)
 
         # Display the mean with different text colors based on a threshold
-        if mean_value < 0.22:
+        if mean_value < THRESHOLD:
             mean_color = 'green'
         else:
             mean_color = 'blue'
@@ -228,40 +234,187 @@ def fft_analysis(file_name, plot=True):
         plt.tight_layout()
         plt.show()
 
-    results = np.array(
-        [[('_bike' in file_name) and (mean_smoothed_value < THRESHOLD),
-          ('_bike' not in file_name) and (mean_smoothed_value < THRESHOLD)],
-         [('_bike' in file_name) and (mean_smoothed_value >= THRESHOLD),
-          ('_bike' not in file_name) and (mean_smoothed_value >= THRESHOLD)]])
+    tp = ('_bike' in file_name) and (mean_smoothed_value < THRESHOLD)
+    fp = ('_bike' not in file_name) and (mean_smoothed_value < THRESHOLD)
+    fn = ('_bike' in file_name) and (mean_smoothed_value >= THRESHOLD)
+    tn = ('_bike' not in file_name) and (mean_smoothed_value >= THRESHOLD)
+    results = np.array([[tn, fp], [fn, tp]])
     return results
+
+
+def preprocess_mag_files(file_list):
+    X_data = []
+    X_data_mean = []
+    y_labels = []
+    for file in file_list:
+        npdata = np.load(file)
+        fft_result = np.fft.fft(npdata, axis=0)
+        frequencies = np.fft.fftfreq(npdata.shape[0], 1/SAMPLING_RATE)
+        frequency_indices_to_keep = (frequencies > 0) & (frequencies < 30)
+        elementwise_product_result = np.prod(
+            np.abs(fft_result[frequency_indices_to_keep, :]), axis=1)
+
+        bins, binned_values = binning.bin_and_average_fft(
+            frequencies[frequency_indices_to_keep],
+            elementwise_product_result, 29)
+
+        sigma = 1
+        smoothed_result = gaussian_filter1d(binned_values, sigma)
+
+        normalized_result_mean = np.mean(elementwise_product_result /
+                                         np.max(elementwise_product_result))
+
+        label = 1 if '_bike' in os.path.basename(file) else 0
+
+        X_data.append(smoothed_result)
+        X_data_mean.append(normalized_result_mean)
+        y_labels.append(label)
+
+    # Create dataframe for X_data
+    columns = bins
+    df_X = pd.DataFrame(X_data, columns=columns)
+    standard_scaler = StandardScaler()
+    X_data_mean = standard_scaler.fit_transform(
+        np.array(X_data_mean).reshape(-1, 1))
+    df_X_mean = pd.DataFrame(X_data_mean, columns=['mean'])
+
+    # Create dataframe for y_labels
+    df_y = pd.DataFrame(y_labels, columns=['bike'])
+
+    return df_X, df_X_mean, df_y
 
 
 def main():
     file_list = get_file_names(get_data_directory())
-    street_file_list = []
-    for file in file_list:
-        if '_street' in file:
-            street_file_list.append(file)
-
+    emt_top_file_names = [(file for file in file_list if '_emt' in file
+                           and '_bottom' not in file)]
+    emt_bottom_file_names = [(file for file in file_list if '_emt' in file
+                              and '_bottom' in file)]
+    mbp_file_names = [file for file in file_list if '_volleyball' in file]
+    test_file_list = file_list
     results = np.array([[0, 0], [0, 0]])
-    for file in file_list:
-        # if '143844' in file:
-        # if '143625' in file:
-        if '_emt' in file and '_baseline' not in file and '_bottom' in file:
-            # plot_axes_vs_time(file)
-            # plot_axes_vs_time_recentered(file)
-            # plot_axes_vs_time_recentered_filtered(file)
-            # plot_mag_3dscatter(file)
-            results += fft_analysis(file, plot=False)
-    print(results)
+    for file in test_file_list:
+        # plot_axes_vs_time(file)
+        # plot_axes_vs_time_recentered(file)
+        # plot_axes_vs_time_recentered_filtered(file)
+        # plot_mag_3dscatter(file)
+        result = fft_analysis(file, plot=False)
+        results += result
+    print(f"threshold: {THRESHOLD}")
+    print(results*.35)
 
-    # for file in street_file_list:
-    #     # if '_bike' in file:
-    #         # plot_axes_vs_time(file)
-    #         # plot_axes_vs_time_recentered(file)
-    #         # plot_axes_vs_time_recentered_filtered(file)
-    #         fft_analysis(file)
-    #         # plot_mag_3dscatter(file)
+    print("30 bins fft values")
+    X, X_mean, y = preprocess_mag_files(test_file_list)
+    X_train, X_test, y_train, y_test = train_test_split(X.values,
+                                                        y.values[:, 0],
+                                                        test_size=0.35,
+                                                        random_state=21,
+                                                        stratify=y)
+    knn = train_and_test.KNN_model(X_train, X_test, y_train, y_test)
+    rfc = train_and_test.RFC_model(X_train, X_test, y_train, y_test)
+    lsvc = train_and_test.LSVC_model(X_train, X_test, y_train, y_test)
+    lr = train_and_test.LR_model(X_train, X_test, y_train, y_test)
+
+    X, X_mean, y = preprocess_mag_files(emt_top_file_names)
+    y_pred = knn.predict(X)
+    print('knn confusion_matrix for emt not bottom:')
+    print(confusion_matrix(y, y_pred))
+    y_pred = rfc.predict(X)
+    print('rfc confusion_matrix for emt not bottom:')
+    print(confusion_matrix(y, y_pred))
+    y_pred = lsvc.predict(X)
+    print('lsvc confusion_matrix for emt not bottom:')
+    print(confusion_matrix(y, y_pred))
+    y_pred = lr.predict(X)
+    print('lr confusion_matrix for emt not bottom:')
+    print(confusion_matrix(y, y_pred))
+
+    X, X_mean, y = preprocess_mag_files(emt_bottom_file_names)
+    y_pred = knn.predict(X)
+    print('knn confusion_matrix for emt bottom:')
+    print(confusion_matrix(y, y_pred))
+    y_pred = rfc.predict(X)
+    print('rfc confusion_matrix for emt bottom:')
+    print(confusion_matrix(y, y_pred))
+    y_pred = lsvc.predict(X)
+    print('lsvc confusion_matrix for emt bottom:')
+    print(confusion_matrix(y, y_pred))
+    y_pred = lr.predict(X)
+    print('lr confusion_matrix for emt bottom:')
+    print(confusion_matrix(y, y_pred))
+
+    X, X_mean, y = preprocess_mag_files(mbp_file_names)
+    y_pred = knn.predict(X)
+    print('knn confusion_matrix for mbp:')
+    print(confusion_matrix(y, y_pred))
+    y_pred = rfc.predict(X)
+    print('rfc confusion_matrix for mbp:')
+    print(confusion_matrix(y, y_pred))
+    y_pred = lsvc.predict(X)
+    print('lsvc confusion_matrix for mbp:')
+    print(confusion_matrix(y, y_pred))
+    y_pred = lr.predict(X)
+    print('lr confusion_matrix for mbp:')
+    print(confusion_matrix(y, y_pred))
+
+    print('\n mean of fft values')
+    X, X_mean, y = preprocess_mag_files(test_file_list)
+    X_mean_train, X_mean_test, y_mean_train, y_mean_test = train_test_split(
+        X_mean.values,
+        y.values[:, 0],
+        test_size=0.35,
+        random_state=21,
+        stratify=y)
+    knn = train_and_test.KNN_model(X_mean_train, X_mean_test,
+                                   y_mean_train, y_mean_test)
+    rfc = train_and_test.RFC_model(X_mean_train, X_mean_test,
+                                   y_mean_train, y_mean_test)
+    lsvc = train_and_test.LSVC_model(X_mean_train, X_mean_test,
+                                     y_mean_train, y_mean_test)
+    lr = train_and_test.LR_model(X_mean_train, X_mean_test,
+                                 y_mean_train, y_mean_test)
+
+    X, X_mean, y = preprocess_mag_files(emt_top_file_names)
+    y_pred = knn.predict(X_mean)
+    print('knn confusion_matrix for emt not bottom:')
+    print(confusion_matrix(y, y_pred))
+    y_pred = rfc.predict(X_mean)
+    print('rfc confusion_matrix for emt not bottom:')
+    print(confusion_matrix(y, y_pred))
+    y_pred = lsvc.predict(X_mean)
+    print('lsvc confusion_matrix for emt not bottom:')
+    print(confusion_matrix(y, y_pred))
+    y_pred = lr.predict(X_mean)
+    print('lr confusion_matrix for emt not bottom:')
+    print(confusion_matrix(y, y_pred))
+
+    X, X_mean, y = preprocess_mag_files(emt_bottom_file_names)
+    y_pred = knn.predict(X_mean)
+    print('knn confusion_matrix for emt bottom:')
+    print(confusion_matrix(y, y_pred))
+    y_pred = rfc.predict(X_mean)
+    print('rfc confusion_matrix for emt bottom:')
+    print(confusion_matrix(y, y_pred))
+    y_pred = lsvc.predict(X_mean)
+    print('lsvc confusion_matrix for emt bottom:')
+    print(confusion_matrix(y, y_pred))
+    y_pred = lr.predict(X_mean)
+    print('lr confusion_matrix for emt bottom:')
+    print(confusion_matrix(y, y_pred))
+
+    X, X_mean, y = preprocess_mag_files(mbp_file_names)
+    y_pred = knn.predict(X_mean)
+    print('knn confusion_matrix for mbp:')
+    print(confusion_matrix(y, y_pred))
+    y_pred = rfc.predict(X_mean)
+    print('rfc confusion_matrix for mbp:')
+    print(confusion_matrix(y, y_pred))
+    y_pred = lsvc.predict(X_mean)
+    print('lsvc confusion_matrix for mbp:')
+    print(confusion_matrix(y, y_pred))
+    y_pred = lr.predict(X_mean)
+    print('lr confusion_matrix for mbp:')
+    print(confusion_matrix(y, y_pred))
 
 
 if __name__ == "__main__":

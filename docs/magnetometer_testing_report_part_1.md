@@ -1,4 +1,4 @@
-## Preliminary Magnetometer Testing Report
+## Magnetometer Testing Report Part 1
 
 Testing was done with a [Memsic MMC5983MA magnetometer](./datasheets/Memsic_09102019_MMC5983MA_Datasheet_Rev_A-1635338.pdf) on both the monterey `bike path` and on the `street` near my home. The `bike path` represents more of a real-world scenario while the `street` test was a more controlled environment where I was the one riding the bike and could control the distance between the bike and the sensor. The one drawback to the `street` location was the nearby presence of active power lines and parked cars, however, the disturbance caused by this was quite small.
 
@@ -53,10 +53,10 @@ Here are two examples of this data processing using the same data samples from t
 
 Running this same processing on all of my samples collected so far yeilds the following results:
 
-|  |Bike Passing| Bike Not Passing  |
-|--|--|--|
-|Bike Detected|8|2|
-|Bike Not Detected|7|14|
+|                 |Bike Not Passing| Bike Passing |
+|-----------------|----------------|--------------|
+|Bike Not Detected|             14 |            7 |
+|Bike Detected    |              2 |            8 |
 
 The less than stellar recall (`true positives / total positives` = `8/15`) is not surprising and actually pretty impressive considering the far side of the trail was about 3 meters from the sensor so half of the bikes were at least 1.5 meters from the sensor (see image at the end of this document). The 2 false positives out of 16 total negatives is not bad, but somewhat suprising it was even that high. I'm not sure what would be causing these. Even one of my baseline data samples (not included in the test set above) "detects" a bike which suggests some other environmental issue at play.
 
