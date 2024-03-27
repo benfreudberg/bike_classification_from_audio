@@ -5,6 +5,7 @@ import time
 FRAME_WIDTH = 1920
 FRAME_HEIGHT = 1080
 
+
 class VideoRecorder:
     def __init__(self, webcam_number=0):
         self.ready = False
