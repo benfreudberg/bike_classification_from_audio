@@ -20,7 +20,7 @@ While we have not yet developed excellent classification models for magnetometer
 ___
 
 **Pros of audio approach**:
-* no worries about range or motion makes for a very simple installation (right next to the motion sensor would be fine)
+* no worries about detection range or sensor motion makes for a very simple installation (right next to the motion sensor would be fine)
 * very few unavoidable causes for inaccuracy
 
 **Cons of audio approach**:
@@ -30,4 +30,4 @@ ___
 ### Next steps
 
 * Coordinate with Chip to see about integrating with existing hardware.
-* Collect more training data. It would be good to automate some of this with a camera trap type device.
+* Collect more training data. It would be good to automate some of this with a camera trap type device if possible.
