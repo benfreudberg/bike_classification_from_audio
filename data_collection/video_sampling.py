@@ -2,6 +2,9 @@ import cv2
 import time
 
 
+FRAME_WIDTH = 1920
+FRAME_HEIGHT = 1080
+
 class VideoRecorder:
     def __init__(self, webcam_number=0):
         self.ready = False
@@ -12,6 +15,10 @@ class VideoRecorder:
         if not self.__cap.isOpened():
             print("Error: Could not open webcam")
             return
+
+        # Get the frame width and height for the webcam
+        self.__cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
+        self.__cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
 
         # Need to do this here otherwise there is a delay when the actual video
         # capture begins
@@ -26,14 +33,10 @@ class VideoRecorder:
     def record_sample(self, output_file, ms_to_record):
         output_file += '.avi'
 
-        # Get the frame width and height from the webcam
-        frame_width = int(self.__cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        frame_height = int(self.__cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
         # Define the codec and create a VideoWriter object
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
         self.__out = cv2.VideoWriter(output_file, fourcc, 30.0,
-                                     (frame_width, frame_height))
+                                     (FRAME_WIDTH, FRAME_HEIGHT))
 
         # Capture frames and write to the output video file until the specified
         # duration
