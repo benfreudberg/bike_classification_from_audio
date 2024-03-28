@@ -379,7 +379,7 @@ def main():
                                      y_mean_train, y_mean_test)
     lr = train_and_test.LR_model(X_mean_train, X_mean_test,
                                  y_mean_train, y_mean_test)
- 
+
     X, X_mean, y = preprocess_mag_files(emt_top_file_names)
     y_pred = knn.predict(X_mean.values)
     print('knn confusion_matrix for emt not bottom:')
