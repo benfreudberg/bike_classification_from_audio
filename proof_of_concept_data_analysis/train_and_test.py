@@ -15,7 +15,7 @@ def KNN_model(X_train, X_test, y_train, y_test):
 
 
 def RFC_model(X_train, X_test, y_train, y_test):
-    rfc = RandomForestClassifier()
+    rfc = RandomForestClassifier(random_state=21)
     rfc.fit(X_train, y_train)
     y_pred = rfc.predict(X_test)
     print('Random Forest confusion_matrix:')
@@ -24,7 +24,8 @@ def RFC_model(X_train, X_test, y_train, y_test):
 
 
 def LSVC_model(X_train, X_test, y_train, y_test):
-    lsvc = LinearSVC(dual='auto', loss='hinge', max_iter=10000)
+    lsvc = LinearSVC(dual='auto', loss='hinge',
+                     max_iter=10000, random_state=21)
     lsvc.fit(X_train, y_train)
     y_pred = lsvc.predict(X_test)
     print('LinearSVC confusion_matrix:')
@@ -33,7 +34,7 @@ def LSVC_model(X_train, X_test, y_train, y_test):
 
 
 def LR_model(X_train, X_test, y_train, y_test):
-    lr = LogisticRegression(max_iter=10000)
+    lr = LogisticRegression(max_iter=10000, random_state=21)
     lr.fit(X_train, y_train)
     y_pred = lr.predict(X_test)
     print('Logistic Regression confusion_matrix:')
