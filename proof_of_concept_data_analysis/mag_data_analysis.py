@@ -292,7 +292,7 @@ def main():
                              and '_bottom' in file]
     mbp_file_names = [file for file in file_list if '_volleyball' in file
                       and '_baseline' not in file]
-    test_file_list = mbp_file_names
+    test_file_list = file_list
     results = np.array([[0, 0], [0, 0]])
     for file in test_file_list:
         # plot_axes_vs_time(file)
@@ -302,8 +302,8 @@ def main():
         result = fft_analysis(file, plot=False)
         results += result
     print(f"threshold: {THRESHOLD}")
-    print(results)
-    return
+    print(results*.35)
+
     print("30 bins fft values")
     X, X_mean, y = preprocess_mag_files(test_file_list)
     X_train, X_test, y_train, y_test = train_test_split(X.values,
