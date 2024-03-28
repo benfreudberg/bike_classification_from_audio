@@ -36,6 +36,7 @@ The steady state values of x, y, and z are simply due to the orientation of the 
 
 If a ferromagnetic object passes by the sensor, we expect to see changes on all three channels of data. The changes may not match each other in phase or amplitude, but the frequency components should be the same as that is just dependent on the speed and distance of the passing object. Therefore, we want to detect if there is a signal at a given frequency on all three channels. If there is, that indicates a bike has passed. If no bike has passed, we should not expect to find any particular frequency component containing a larger magnitude than the others as that sample should just consist of steady state positions and random noise. With that goal in mind, the following proceedure is proposed:
 
+1. Subtract the mean of the channel from every channel data series to remove the DC offset.
 1. Calculate the FFT (fast Fourier transform) of each `x`, `y`, and `z` channel data series in order to obtain the magnitude of the various frequency components.
 1. Retain just the positive frequency components below 30Hz.
 1. Elementwise multiply the FFT results from each channel together in order to amplify signals with matching frequencies.

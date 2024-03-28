@@ -137,6 +137,8 @@ def plot_magnitude_range_all_files(file_list):
 
 def fft_analysis(file_name, plot=True):
     npdata = np.load(file_name)
+    channel_means = np.mean(npdata, axis=0)
+    npdata = npdata - channel_means
     fft_result = np.fft.fft(npdata, axis=0)
     frequencies = np.fft.fftfreq(npdata.shape[0], 1/SAMPLING_RATE)
     frequency_indices_to_keep = (frequencies > 0) & (frequencies < 30)
@@ -248,6 +250,8 @@ def preprocess_mag_files(file_list):
     y_labels = []
     for file in file_list:
         npdata = np.load(file)
+        channel_means = np.mean(npdata, axis=0)
+        npdata = npdata - channel_means
         fft_result = np.fft.fft(npdata, axis=0)
         frequencies = np.fft.fftfreq(npdata.shape[0], 1/SAMPLING_RATE)
         frequency_indices_to_keep = (frequencies > 0) & (frequencies < 30)
@@ -258,15 +262,17 @@ def preprocess_mag_files(file_list):
             frequencies[frequency_indices_to_keep],
             elementwise_product_result, 29)
 
-        sigma = 1
+        sigma = .5
         smoothed_result = gaussian_filter1d(binned_values, sigma)
+        normalized_smoothed_result = (smoothed_result /
+                                      np.max(smoothed_result))
 
         normalized_result_mean = np.mean(elementwise_product_result /
                                          np.max(elementwise_product_result))
 
         label = 1 if '_bike' in os.path.basename(file) else 0
 
-        X_data.append(smoothed_result)
+        X_data.append(normalized_smoothed_result)
         X_data_mean.append(normalized_result_mean)
         y_labels.append(label)
 
@@ -290,8 +296,7 @@ def main():
                           and '_bottom' not in file]
     emt_bottom_file_names = [file for file in file_list if '_emt' in file
                              and '_bottom' in file]
-    mbp_file_names = [file for file in file_list if '_volleyball' in file
-                      and '_baseline' not in file]
+    mbp_file_names = [file for file in file_list if '_volleyball' in file]
     test_file_list = file_list
     results = np.array([[0, 0], [0, 0]])
     for file in test_file_list:
