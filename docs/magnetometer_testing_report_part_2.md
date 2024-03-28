@@ -9,19 +9,20 @@ Data from the top of EMT represents pretty close to a best case scenario for a m
 Before feeding the data to any model, it must undergo some preprocessing. I tested two methods of preprocessing which start off the same. These are `Binned FFT Products` and `Mean FFT Products`.
 
 **Common to both methods**  
-1. Calculate the FFT of each of the `x`, `y`, and `z` channel data sets.
-2. Elementwise multiply the FFT results of the three channels.
-3. Keep only the values representing positive frequencies below 30Hz.
+1. Subtract the mean of the channel from every channel data series to remove the DC offset.
+2. Calculate the FFT of each of the `x`, `y`, and `z` channel data series.
+3. Elementwise multiply the FFT results of the three channels.
+4. Keep only the values representing positive frequencies below 30Hz.
 
 **Mean FFT Products**  
 
-4. Normalize the FFT products
-5. Calculate the mean of the normalized FFT products.
+5. Normalize the FFT products
+6. Calculate the mean of the normalized FFT products.
 
 **Binned FFT Products**  
 
-4. Apply a gaussian filter to smooth the FFT products.  
-5. Bin the products by frequency into 30 buckets.
+5. Apply a gaussian filter to smooth the FFT products.  
+6. Bin the products by frequency into 30 buckets.
 
 `Binned FFT Products` results in 30 features for each sample while `Mean FFT Products` results in just one.
 
