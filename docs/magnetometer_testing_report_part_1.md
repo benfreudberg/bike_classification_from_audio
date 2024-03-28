@@ -53,10 +53,10 @@ Here are two examples of this data processing using the same data samples from t
 
 Running this same processing on all of my samples collected so far yeilds the following results:
 
-|                 |Bike Not Passing| Bike Passing |
-|-----------------|----------------|--------------|
-|Bike Not Detected|             14 |            7 |
-|Bike Detected    |              2 |            8 |
+|                |Bike Not Detected| Bike Detected |
+|----------------|-----------------|---------------|
+|Bike Not Passing|              14 |             2 |
+|Bike Passing    |               7 |             8 |
 
 The less than stellar recall (`true positives / total positives` = `8/15`) is not surprising and actually pretty impressive considering the far side of the trail was about 3 meters from the sensor so half of the bikes were at least 1.5 meters from the sensor (see image at the end of this document). The 2 false positives out of 16 total negatives is not bad, but somewhat suprising it was even that high. I'm not sure what would be causing these. Even one of my baseline data samples (not included in the test set above) "detects" a bike which suggests some other environmental issue at play.
 

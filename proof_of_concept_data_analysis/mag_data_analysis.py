@@ -286,12 +286,13 @@ def preprocess_mag_files(file_list):
 
 def main():
     file_list = get_file_names(get_data_directory())
-    emt_top_file_names = [(file for file in file_list if '_emt' in file
-                           and '_bottom' not in file)]
-    emt_bottom_file_names = [(file for file in file_list if '_emt' in file
-                              and '_bottom' in file)]
-    mbp_file_names = [file for file in file_list if '_volleyball' in file]
-    test_file_list = file_list
+    emt_top_file_names = [file for file in file_list if '_emt' in file
+                          and '_bottom' not in file]
+    emt_bottom_file_names = [file for file in file_list if '_emt' in file
+                             and '_bottom' in file]
+    mbp_file_names = [file for file in file_list if '_volleyball' in file
+                      and '_baseline' not in file]
+    test_file_list = mbp_file_names
     results = np.array([[0, 0], [0, 0]])
     for file in test_file_list:
         # plot_axes_vs_time(file)
@@ -301,8 +302,8 @@ def main():
         result = fft_analysis(file, plot=False)
         results += result
     print(f"threshold: {THRESHOLD}")
-    print(results*.35)
-
+    print(results)
+    return
     print("30 bins fft values")
     X, X_mean, y = preprocess_mag_files(test_file_list)
     X_train, X_test, y_train, y_test = train_test_split(X.values,

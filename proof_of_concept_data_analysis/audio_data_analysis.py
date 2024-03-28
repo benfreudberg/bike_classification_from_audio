@@ -60,10 +60,10 @@ def preprocess_audio_files(file_list):
 
 def main():
     file_list = get_file_names(get_data_directory())
-    emt_top_file_names = [(file for file in file_list if '_emt' in file
-                           and '_bottom' not in file)]
-    emt_bottom_file_names = [(file for file in file_list if '_emt' in file
-                              and '_bottom' in file)]
+    emt_top_file_names = [file for file in file_list if '_emt' in file
+                          and '_bottom' not in file]
+    emt_bottom_file_names = [file for file in file_list if '_emt' in file
+                             and '_bottom' in file]
     mbp_file_names = [file for file in file_list if '_volleyball' in file]
     X, y = preprocess_audio_files(file_list)
     X_train, X_test, y_train, y_test = train_test_split(X.values,
