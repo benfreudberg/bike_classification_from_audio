@@ -1,6 +1,6 @@
 ## Proof of Concept Testing Summary
 
-While we have not yet developed excellent classification models for magnetometer data or audio data (82% and 80% accuracy so far), we have shown that either of these approaches can be used to detect bikes. We have also learned about some of the strengths and weaknesses of each and are well positioned to develop a good model in the future taking into account certain limitations of each.
+While we have not yet developed excellent classification models for magnetometer data or audio data (82% and 85% accuracy so far), we have shown that either of these approaches can be used to detect bikes. We have also learned about some of the strengths and weaknesses of each and are well positioned to develop a good model in the future taking into account certain limitations of each.
 
 ### Pros and Cons
 

@@ -7,7 +7,6 @@ from scipy.signal import butter, sosfilt
 from scipy.ndimage import gaussian_filter1d
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import confusion_matrix
 from sklearn.preprocessing import StandardScaler
 import train_and_test
 import binning
@@ -254,13 +253,15 @@ def preprocess_mag_files(file_list):
         npdata = npdata - channel_means
         fft_result = np.fft.fft(npdata, axis=0)
         frequencies = np.fft.fftfreq(npdata.shape[0], 1/SAMPLING_RATE)
-        frequency_indices_to_keep = (frequencies > 0) & (frequencies < 30)
-        elementwise_product_result = np.prod(
-            np.abs(fft_result[frequency_indices_to_keep, :]), axis=1)
+        frequency_indices_to_keep = (frequencies > 0) & (frequencies < 39)
+        fft_result_to_keep = np.abs(fft_result[frequency_indices_to_keep, :])
+        # fft_result_to_keep = fft_result_to_keep + (
+        #     1 - np.min(fft_result_to_keep))
+        elementwise_product_result = np.prod(fft_result_to_keep, axis=1)
 
         bins, binned_values = binning.bin_and_average_fft(
             frequencies[frequency_indices_to_keep],
-            elementwise_product_result, 29)
+            elementwise_product_result, 38)
 
         sigma = .5
         smoothed_result = gaussian_filter1d(binned_values, sigma)
@@ -292,11 +293,11 @@ def preprocess_mag_files(file_list):
 
 def main():
     file_list = get_file_names(get_data_directory())
-    emt_top_file_names = [file for file in file_list if '_emt' in file
-                          and '_bottom' not in file]
-    emt_bottom_file_names = [file for file in file_list if '_emt' in file
-                             and '_bottom' in file]
-    mbp_file_names = [file for file in file_list if '_volleyball' in file]
+    # emt_top_file_names = [file for file in file_list if '_emt' in file
+    #                       and '_bottom' not in file]
+    # emt_bottom_file_names = [file for file in file_list if '_emt' in file
+    #                          and '_bottom' in file]
+    # mbp_file_names = [file for file in file_list if '_volleyball' in file]
     test_file_list = file_list
     results = np.array([[0, 0], [0, 0]])
     for file in test_file_list:
@@ -316,54 +317,12 @@ def main():
                                                         test_size=0.35,
                                                         random_state=21,
                                                         stratify=y)
-    knn = train_and_test.KNN_model(X_train, X_test, y_train, y_test)
-    rfc = train_and_test.RFC_model(X_train, X_test, y_train, y_test)
-    lsvc = train_and_test.LSVC_model(X_train, X_test, y_train, y_test)
-    lr = train_and_test.LR_model(X_train, X_test, y_train, y_test)
+    train_and_test.KNN_model(X_train, X_test, y_train, y_test)
+    train_and_test.RFC_model(X_train, X_test, y_train, y_test)
+    train_and_test.LSVC_model(X_train, X_test, y_train, y_test)
+    train_and_test.LR_model(X_train, X_test, y_train, y_test)
 
-    X, X_mean, y = preprocess_mag_files(emt_top_file_names)
-    y_pred = knn.predict(X.values)
-    print('knn confusion_matrix for emt not bottom:')
-    print(confusion_matrix(y, y_pred))
-    y_pred = rfc.predict(X.values)
-    print('rfc confusion_matrix for emt not bottom:')
-    print(confusion_matrix(y, y_pred))
-    y_pred = lsvc.predict(X.values)
-    print('lsvc confusion_matrix for emt not bottom:')
-    print(confusion_matrix(y, y_pred))
-    y_pred = lr.predict(X.values)
-    print('lr confusion_matrix for emt not bottom:')
-    print(confusion_matrix(y, y_pred))
-
-    X, X_mean, y = preprocess_mag_files(emt_bottom_file_names)
-    y_pred = knn.predict(X.values)
-    print('knn confusion_matrix for emt bottom:')
-    print(confusion_matrix(y, y_pred))
-    y_pred = rfc.predict(X.values)
-    print('rfc confusion_matrix for emt bottom:')
-    print(confusion_matrix(y, y_pred))
-    y_pred = lsvc.predict(X.values)
-    print('lsvc confusion_matrix for emt bottom:')
-    print(confusion_matrix(y, y_pred))
-    y_pred = lr.predict(X.values)
-    print('lr confusion_matrix for emt bottom:')
-    print(confusion_matrix(y, y_pred))
-
-    X, X_mean, y = preprocess_mag_files(mbp_file_names)
-    y_pred = knn.predict(X.values)
-    print('knn confusion_matrix for mbp:')
-    print(confusion_matrix(y, y_pred))
-    y_pred = rfc.predict(X.values)
-    print('rfc confusion_matrix for mbp:')
-    print(confusion_matrix(y, y_pred))
-    y_pred = lsvc.predict(X.values)
-    print('lsvc confusion_matrix for mbp:')
-    print(confusion_matrix(y, y_pred))
-    y_pred = lr.predict(X.values)
-    print('lr confusion_matrix for mbp:')
-    print(confusion_matrix(y, y_pred))
-
-    print('\n mean of fft values')
+    print('\nmean of fft values')
     X, X_mean, y = preprocess_mag_files(test_file_list)
     X_mean_train, X_mean_test, y_mean_train, y_mean_test = train_test_split(
         X_mean.values,
@@ -371,56 +330,14 @@ def main():
         test_size=0.35,
         random_state=21,
         stratify=y)
-    knn = train_and_test.KNN_model(X_mean_train, X_mean_test,
-                                   y_mean_train, y_mean_test)
-    rfc = train_and_test.RFC_model(X_mean_train, X_mean_test,
-                                   y_mean_train, y_mean_test)
-    lsvc = train_and_test.LSVC_model(X_mean_train, X_mean_test,
-                                     y_mean_train, y_mean_test)
-    lr = train_and_test.LR_model(X_mean_train, X_mean_test,
-                                 y_mean_train, y_mean_test)
-
-    X, X_mean, y = preprocess_mag_files(emt_top_file_names)
-    y_pred = knn.predict(X_mean.values)
-    print('knn confusion_matrix for emt not bottom:')
-    print(confusion_matrix(y, y_pred))
-    y_pred = rfc.predict(X_mean.values)
-    print('rfc confusion_matrix for emt not bottom:')
-    print(confusion_matrix(y, y_pred))
-    y_pred = lsvc.predict(X_mean.values)
-    print('lsvc confusion_matrix for emt not bottom:')
-    print(confusion_matrix(y, y_pred))
-    y_pred = lr.predict(X_mean.values)
-    print('lr confusion_matrix for emt not bottom:')
-    print(confusion_matrix(y, y_pred))
-
-    X, X_mean, y = preprocess_mag_files(emt_bottom_file_names)
-    y_pred = knn.predict(X_mean.values)
-    print('knn confusion_matrix for emt bottom:')
-    print(confusion_matrix(y, y_pred))
-    y_pred = rfc.predict(X_mean.values)
-    print('rfc confusion_matrix for emt bottom:')
-    print(confusion_matrix(y, y_pred))
-    y_pred = lsvc.predict(X_mean.values)
-    print('lsvc confusion_matrix for emt bottom:')
-    print(confusion_matrix(y, y_pred))
-    y_pred = lr.predict(X_mean.values)
-    print('lr confusion_matrix for emt bottom:')
-    print(confusion_matrix(y, y_pred))
-
-    X, X_mean, y = preprocess_mag_files(mbp_file_names)
-    y_pred = knn.predict(X_mean.values)
-    print('knn confusion_matrix for mbp:')
-    print(confusion_matrix(y, y_pred))
-    y_pred = rfc.predict(X_mean.values)
-    print('rfc confusion_matrix for mbp:')
-    print(confusion_matrix(y, y_pred))
-    y_pred = lsvc.predict(X_mean.values)
-    print('lsvc confusion_matrix for mbp:')
-    print(confusion_matrix(y, y_pred))
-    y_pred = lr.predict(X_mean.values)
-    print('lr confusion_matrix for mbp:')
-    print(confusion_matrix(y, y_pred))
+    train_and_test.KNN_model(X_mean_train, X_mean_test,
+                             y_mean_train, y_mean_test)
+    train_and_test.RFC_model(X_mean_train, X_mean_test,
+                             y_mean_train, y_mean_test)
+    train_and_test.LSVC_model(X_mean_train, X_mean_test,
+                              y_mean_train, y_mean_test)
+    train_and_test.LR_model(X_mean_train, X_mean_test,
+                            y_mean_train, y_mean_test)
 
 
 if __name__ == "__main__":
