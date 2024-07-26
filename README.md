@@ -21,3 +21,4 @@ Documents:
     * [magnetometer testing report part 1](./docs/magnetometer_testing_report_part_1.md)
     * [magnetometer testing report part 2](./docs/magnetometer_testing_report_part_2.md)
     * [audio testing report](./docs/audio_testing_report.md)
+* [hardware and firmware](./docs/hardware_and_firmware.md)
