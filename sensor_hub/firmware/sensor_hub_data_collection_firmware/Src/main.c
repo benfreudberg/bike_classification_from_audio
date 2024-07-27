@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "cmsis_os.h"
 #include "dfsdm.h"
 #include "dma.h"
 #include "fatfs.h"
@@ -63,6 +64,7 @@ int dma_rec_buf_cplt_count = 0;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+void MX_FREERTOS_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -191,19 +193,21 @@ int main(void)
   printf("cam i2c ID: 0x%04x\n", cam_i2c_id);
 
   //sd card file system
-  FRESULT res; /* FatFs function common result code */
-  uint32_t byteswritten, bytesread; /* File write/read counts */
-  uint8_t wtext[] = "STM32 FATFS works great!"; /* File write buffer */
-  uint8_t rtext[_MAX_SS];/* File read buffer */
-
-  res = f_mount(&SDFatFS, (TCHAR const*)SDPath, 0);
-  if(res != FR_OK)
-   {
-       Error_Handler();
-   }
-   else
-   {
+//  FRESULT res; /* FatFs function common result code */
+//  uint32_t byteswritten, bytesread; /* File write/read counts */
+//  uint8_t wtext[] = "STM32 FATFS works great!"; /* File write buffer */
+//  uint8_t rtext[_MAX_SS];/* File read buffer */
+//
+//  res = f_mount(&SDFatFS, (TCHAR const*)SDPath, 0);
+//  printf("res: %d\n", res);
+//  if(res != FR_OK)
+//   {
+//       Error_Handler();
+//   }
+//   else
+//   {
 //     res = f_mkfs((TCHAR const*)SDPath, FM_FAT32, 0, rtext, sizeof(rtext));
+//     printf("res: %d\n", res);
 //     if(res != FR_OK)
 //     {
 //         Error_Handler();
@@ -212,6 +216,7 @@ int main(void)
 //     {
 //       //Open file for writing (Create)
 //       res = f_open(&SDFile, "STM32.TXT", FA_CREATE_ALWAYS | FA_WRITE);
+//       printf("res: %d\n", res);
 //       if(res != FR_OK)
 //       {
 //           Error_Handler();
@@ -220,6 +225,7 @@ int main(void)
 //       {
 //         //Write to the text file
 //         res = f_write(&SDFile, wtext, strlen((char *)wtext), (void *)&byteswritten);
+//         printf("res: %d\n", res);
 //         if((byteswritten == 0) || (res != FR_OK))
 //         {
 //           Error_Handler();
@@ -230,12 +236,23 @@ int main(void)
 //         }
 //       }
 //     }
-   }
-// f_mount(&SDFatFS, (TCHAR const*)NULL, 0);
-  res = f_open(&SDFile, "audio_sample_long_file_name.wav", FA_CREATE_ALWAYS | FA_WRITE); //max 8 chars before '.'?
-  printf("res: %d\n", res);
+//   }
+//  f_mount(&SDFatFS, (TCHAR const*)NULL, 0);
+//  res = f_open(&SDFile, "audio_sample_long_file_name.wav", FA_CREATE_ALWAYS | FA_WRITE); //max 8 chars before '.'?
+//  printf("res: %d\n", res);
 
   /* USER CODE END 2 */
+
+  /* Init scheduler */
+  osKernelInitialize();
+
+  /* Call init function for freertos objects (in cmsis_os2.c) */
+  MX_FREERTOS_Init();
+
+  /* Start scheduler */
+  osKernelStart();
+
+  /* We should never get here as control is now taken by the scheduler */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -248,24 +265,24 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
     tick = HAL_GetTick();
-    if (dma_rec_buf_cplt_count > 1) { //skip the first 2 buffer-fulls of data (232 ms each at 10240 size)
-      if (dma_rec_half_buf_cplt) {
-        //it takes about 15 ms to do this conversion and saving (mostly saving) for 116 ms of audio data
-        for (int i = 0; i<AUDIO_BUF_LEN/2; i++) {
-          // full scale range with Sinc3 and FOSR set to 68 is +/- 68^3, approximately 2^18.26
-          save_buf[i] = ((float)(rec_buf[i]>>8)) / (2<<18);
-        }
-        dma_rec_half_buf_cplt = false;
-        f_write(&SDFile, (const void*)save_buf, sizeof(save_buf), (void *)&byteswritten);
-      }
-      if (dma_rec_buf_cplt) {
-        for (int i = 0; i<AUDIO_BUF_LEN/2; i++) {
-          save_buf[i] = ((float)(rec_buf[i + AUDIO_BUF_LEN/2]>>8)) / (2<<18);
-        }
-        dma_rec_buf_cplt = false;
-        f_write(&SDFile, (const void*)save_buf, sizeof(save_buf), (void *)&byteswritten);
-      }
-    }
+//    if (dma_rec_buf_cplt_count > 1) { //skip the first 2 buffer-fulls of data (232 ms each at 10240 size)
+//      if (dma_rec_half_buf_cplt) {
+//        //it takes about 15 ms to do this conversion and saving (mostly saving) for 116 ms of audio data
+//        for (int i = 0; i<AUDIO_BUF_LEN/2; i++) {
+//          // full scale range with Sinc3 and FOSR set to 68 is +/- 68^3, approximately 2^18.26
+//          save_buf[i] = ((float)(rec_buf[i]>>8)) / (2<<18);
+//        }
+//        dma_rec_half_buf_cplt = false;
+//        f_write(&SDFile, (const void*)save_buf, sizeof(save_buf), (void *)&byteswritten);
+//      }
+//      if (dma_rec_buf_cplt) {
+//        for (int i = 0; i<AUDIO_BUF_LEN/2; i++) {
+//          save_buf[i] = ((float)(rec_buf[i + AUDIO_BUF_LEN/2]>>8)) / (2<<18);
+//        }
+//        dma_rec_buf_cplt = false;
+//        f_write(&SDFile, (const void*)save_buf, sizeof(save_buf), (void *)&byteswritten);
+//      }
+//    }
 
     light_state = (tick%3000) / 1000;
     if (light_state != last_light_state) {
@@ -378,6 +395,27 @@ void HAL_DFSDM_FilterRegConvCpltCallback(DFSDM_Filter_HandleTypeDef *hdfsdm_filt
 }
 
 /* USER CODE END 4 */
+
+/**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM1 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* USER CODE BEGIN Callback 0 */
+
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM1) {
+    HAL_IncTick();
+  }
+  /* USER CODE BEGIN Callback 1 */
+
+  /* USER CODE END Callback 1 */
+}
 
 /**
   * @brief  This function is executed in case of error occurrence.
