@@ -31,6 +31,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "audio_task.h"
+#include "timestamp.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
@@ -44,7 +46,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define AUDIO_BUF_LEN   10240
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -55,11 +57,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-int32_t rec_buf[AUDIO_BUF_LEN];
-float save_buf[AUDIO_BUF_LEN/2];
-bool dma_rec_half_buf_cplt = false;
-bool dma_rec_buf_cplt = false;
-int dma_rec_buf_cplt_count = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -116,7 +114,26 @@ int main(void)
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
   //microphone
-  HAL_DFSDM_FilterRegularStart_DMA(&hdfsdm1_filter0, rec_buf, AUDIO_BUF_LEN);
+  HAL_DFSDM_FilterRegularStart_DMA(&hdfsdm1_filter0, (int32_t*)&raw_rec_buf[0][0], AUDIO_BUF_LEN);
+
+  //get RTC time
+//  RTC_TimeTypeDef sTime;
+//  RTC_DateTypeDef sDate;
+//  HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+//  HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
+//  sTime.Seconds = 0;
+//  sTime.Minutes = 24;
+//  sTime.Hours = 18;
+//  sDate.Date = 6;
+//  sDate.Month = 8;
+//  sDate.Year = 44;
+//  sDate.WeekDay = RTC_WEEKDAY_TUESDAY;
+//  HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+//  HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
+  TimeStamp_AquireTime();
+  char timestamp[20];
+  TimeStamp_GetTimeStampString(timestamp);
+  printf("timestamp is %s\n", timestamp);
 
   //enable backup battery charging
   HAL_PWREx_EnableBatteryCharging(PWR_BATTERY_CHARGING_RESISTOR_5);
@@ -197,7 +214,7 @@ int main(void)
 //  uint32_t byteswritten, bytesread; /* File write/read counts */
 //  uint8_t wtext[] = "STM32 FATFS works great!"; /* File write buffer */
 //  uint8_t rtext[_MAX_SS];/* File read buffer */
-//
+
 //  res = f_mount(&SDFatFS, (TCHAR const*)SDPath, 0);
 //  printf("res: %d\n", res);
 //  if(res != FR_OK)
@@ -256,67 +273,11 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  uint32_t tick;
-  int light_state = 0;
-  int last_light_state = -1;
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    tick = HAL_GetTick();
-//    if (dma_rec_buf_cplt_count > 1) { //skip the first 2 buffer-fulls of data (232 ms each at 10240 size)
-//      if (dma_rec_half_buf_cplt) {
-//        //it takes about 15 ms to do this conversion and saving (mostly saving) for 116 ms of audio data
-//        for (int i = 0; i<AUDIO_BUF_LEN/2; i++) {
-//          // full scale range with Sinc3 and FOSR set to 68 is +/- 68^3, approximately 2^18.26
-//          save_buf[i] = ((float)(rec_buf[i]>>8)) / (2<<18);
-//        }
-//        dma_rec_half_buf_cplt = false;
-//        f_write(&SDFile, (const void*)save_buf, sizeof(save_buf), (void *)&byteswritten);
-//      }
-//      if (dma_rec_buf_cplt) {
-//        for (int i = 0; i<AUDIO_BUF_LEN/2; i++) {
-//          save_buf[i] = ((float)(rec_buf[i + AUDIO_BUF_LEN/2]>>8)) / (2<<18);
-//        }
-//        dma_rec_buf_cplt = false;
-//        f_write(&SDFile, (const void*)save_buf, sizeof(save_buf), (void *)&byteswritten);
-//      }
-//    }
-
-    light_state = (tick%3000) / 1000;
-    if (light_state != last_light_state) {
-      last_light_state = light_state;
-      switch (light_state) {
-        case 0:
-          HAL_GPIO_WritePin(GPIOE, LED3_Pin, GPIO_PIN_RESET);
-          HAL_GPIO_WritePin(GPIOE, LED1_Pin, GPIO_PIN_SET);
-          printf("green\n");
-          break;
-        case 1:
-          HAL_GPIO_WritePin(GPIOE, LED1_Pin, GPIO_PIN_RESET);
-          HAL_GPIO_WritePin(GPIOE, LED2_Pin, GPIO_PIN_SET);
-          printf("yellow\n");
-          break;
-        case 2:
-          HAL_GPIO_WritePin(GPIOE, LED2_Pin, GPIO_PIN_RESET);
-          HAL_GPIO_WritePin(GPIOE, LED3_Pin, GPIO_PIN_SET);
-          printf("red\n");
-      }
-    }
-    if (tick%4111 == 0) {
-      RTC_TimeTypeDef time;
-      RTC_DateTypeDef date;
-      HAL_RTC_GetTime(&hrtc, &time, RTC_FORMAT_BIN);
-      HAL_RTC_GetDate(&hrtc, &date, RTC_FORMAT_BIN);
-      printf("%02d/%02d/%04d %02d:%02d:%02d\n", date.Month, date.Date, 1980 + date.Year, time.Hours, time.Minutes, time.Seconds);
-    }
-    if (dma_rec_buf_cplt_count > 65) { //end after 66-2 total buffers (14.85 seconds)
-      HAL_DFSDM_FilterRegularStop_DMA(&hdfsdm1_filter0);
-      f_close(&SDFile);
-      f_mount(&SDFatFS, (TCHAR const*)NULL, 0);
-      return 0;
-    }
   }
   /* USER CODE END 3 */
 }
@@ -385,14 +346,14 @@ int _write(int file, char *ptr, int len)
   return len;
 }
 
-void HAL_DFSDM_FilterRegConvHalfCpltCallback(DFSDM_Filter_HandleTypeDef *hdfsdm_filter){
-  dma_rec_half_buf_cplt = true;
-}
-
-void HAL_DFSDM_FilterRegConvCpltCallback(DFSDM_Filter_HandleTypeDef *hdfsdm_filter) {
-  dma_rec_buf_cplt = true;
-  dma_rec_buf_cplt_count++;
-}
+//void HAL_DFSDM_FilterRegConvHalfCpltCallback(DFSDM_Filter_HandleTypeDef *hdfsdm_filter){
+//  dma_rec_half_buf_cplt = true;
+//}
+//
+//void HAL_DFSDM_FilterRegConvCpltCallback(DFSDM_Filter_HandleTypeDef *hdfsdm_filter) {
+//  dma_rec_buf_cplt = true;
+//  dma_rec_buf_cplt_count++;
+//}
 
 /* USER CODE END 4 */
 

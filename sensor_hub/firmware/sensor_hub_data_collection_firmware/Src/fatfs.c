@@ -15,6 +15,7 @@
   *
   ******************************************************************************
   */
+#include "timestamp.h"
 /* USER CODE END Header */
 #include "fatfs.h"
 
@@ -45,10 +46,49 @@ void MX_FATFS_Init(void)
 DWORD get_fattime(void)
 {
   /* USER CODE BEGIN get_fattime */
-  return 0;
+  return TimeStamp_GetFatTime();
   /* USER CODE END get_fattime */
 }
 
 /* USER CODE BEGIN Application */
+int CopyFile(char *srcFile, char *destFile, BYTE buffer[], UINT buffer_length)
+{
+  FIL file;
+  FRESULT res;
+  UINT br = 0, bw = 0;
+  FSIZE_t bytes_copied = 0;
 
+  while(1) {
+    res = f_open(&file, (const TCHAR*)srcFile, FA_READ | FA_OPEN_EXISTING);
+    if(res) {
+      return -1;
+    }
+    res = f_lseek(&file, bytes_copied);
+    if(res) {
+      return -2;
+    }
+
+    f_read(&file, buffer, buffer_length, &br);  /* Read a chunk of source file */
+    f_close(&file);
+
+    if(!br) {
+      return 0;
+    }
+
+    if(br) {
+      res = f_open(&file, (const TCHAR*)destFile, FA_CREATE_ALWAYS | FA_WRITE);
+      if(res) {
+        return -3;
+      }
+      res = f_lseek(&file, bytes_copied);
+      if(res) {
+        return -4;
+      }
+
+      f_write(&file, buffer, br, &bw); /* Write it to the destination file */
+      f_close(&file);
+    }
+    bytes_copied += bw;
+  }
+}
 /* USER CODE END Application */

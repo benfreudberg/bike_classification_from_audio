@@ -39,7 +39,7 @@ extern FIL SDFile; /* File object for SD */
 void MX_FATFS_Init(void);
 
 /* USER CODE BEGIN Prototypes */
-
+int CopyFile(char *srcFile, char *destFile, BYTE buffer[], UINT buffer_length);
 /* USER CODE END Prototypes */
 #ifdef __cplusplus
 }

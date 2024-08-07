@@ -25,6 +25,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "audio_task.h"
 #include "fatfs.h"
 #include <stdio.h>
 #include <string.h>
@@ -53,15 +54,51 @@
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for leds_task */
+osThreadId_t leds_taskHandle;
+const osThreadAttr_t leds_task_attributes = {
+  .name = "leds_task",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for audio_buf_task */
+osThreadId_t audio_buf_taskHandle;
+const osThreadAttr_t audio_buf_task_attributes = {
+  .name = "audio_buf_task",
   .stack_size = 5000 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
-/* Definitions for ledsTask */
-osThreadId_t ledsTaskHandle;
-const osThreadAttr_t ledsTask_attributes = {
-  .name = "ledsTask",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityLow,
+/* Definitions for audioFileTask */
+osThreadId_t audioFileTaskHandle;
+const osThreadAttr_t audioFileTask_attributes = {
+  .name = "audioFileTask",
+  .stack_size = 5000 * 4,
+  .priority = (osPriority_t) osPriorityBelowNormal7,
+};
+/* Definitions for audio_buf_task2 */
+osThreadId_t audio_buf_task2Handle;
+const osThreadAttr_t audio_buf_task2_attributes = {
+  .name = "audio_buf_task2",
+  .stack_size = 5000 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for fileMutex */
+osMutexId_t fileMutexHandle;
+const osMutexAttr_t fileMutex_attributes = {
+  .name = "fileMutex"
+};
+/* Definitions for audio_buf_1st_data_ready */
+osSemaphoreId_t audio_buf_1st_data_readyHandle;
+const osSemaphoreAttr_t audio_buf_1st_data_ready_attributes = {
+  .name = "audio_buf_1st_data_ready"
+};
+/* Definitions for audio_buf_2nd_data_ready */
+osSemaphoreId_t audio_buf_2nd_data_readyHandle;
+const osSemaphoreAttr_t audio_buf_2nd_data_ready_attributes = {
+  .name = "audio_buf_2nd_data_ready"
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -70,8 +107,23 @@ const osThreadAttr_t ledsTask_attributes = {
 
 void StartDefaultTask(void *argument);
 extern void StartLedsTask(void *argument);
+extern void StartAudioBufTask(void *argument);
+extern void StartAudioFileTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
+
+/* Hook prototypes */
+void vApplicationStackOverflowHook(TaskHandle_t xTask, signed char *pcTaskName);
+
+/* USER CODE BEGIN 4 */
+void vApplicationStackOverflowHook(TaskHandle_t xTask, signed char *pcTaskName)
+{
+   /* Run time stack overflow checking is performed if
+   configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2. This hook function is
+   called if a stack overflow is detected. */
+  printf("stack overflow detected on task: %s\n", pcTaskName);
+}
+/* USER CODE END 4 */
 
 /**
   * @brief  FreeRTOS initialization
@@ -82,10 +134,20 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
 
   /* USER CODE END Init */
+  /* Create the mutex(es) */
+  /* creation of fileMutex */
+  fileMutexHandle = osMutexNew(&fileMutex_attributes);
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
+
+  /* Create the semaphores(s) */
+  /* creation of audio_buf_1st_data_ready */
+  audio_buf_1st_data_readyHandle = osSemaphoreNew(1, 0, &audio_buf_1st_data_ready_attributes);
+
+  /* creation of audio_buf_2nd_data_ready */
+  audio_buf_2nd_data_readyHandle = osSemaphoreNew(1, 0, &audio_buf_2nd_data_ready_attributes);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
@@ -103,8 +165,17 @@ void MX_FREERTOS_Init(void) {
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
-  /* creation of ledsTask */
-  ledsTaskHandle = osThreadNew(StartLedsTask, NULL, &ledsTask_attributes);
+  /* creation of leds_task */
+  leds_taskHandle = osThreadNew(StartLedsTask, NULL, &leds_task_attributes);
+
+  /* creation of audio_buf_task */
+  audio_buf_taskHandle = osThreadNew(StartAudioBufTask, (void *) &audio_buf_1st_half, &audio_buf_task_attributes);
+
+  /* creation of audioFileTask */
+  audioFileTaskHandle = osThreadNew(StartAudioFileTask, NULL, &audioFileTask_attributes);
+
+  /* creation of audio_buf_task2 */
+  audio_buf_task2Handle = osThreadNew(StartAudioBufTask, (void *) &audio_buf_2nd_half, &audio_buf_task2_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* USER CODE END RTOS_THREADS */
@@ -125,62 +196,10 @@ void MX_FREERTOS_Init(void) {
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
-  uint32_t scheduling_kernel_tick_count = 0;
   /* Infinite loop */
   for(;;)
   {
-    FRESULT res; /* FatFs function common result code */
-    uint32_t byteswritten, bytesread; /* File write/read counts */
-    uint8_t wtext[] = "STM32 FATFS works great!"; /* File write buffer */
-    uint8_t rtext[_MAX_SS];/* File read buffer */
-    char file_name[50];
-
-    uint32_t kernel_tick_count = osKernelGetTickCount();
-    sprintf(file_name, "kernal_tick_count_is_%lu.txt", kernel_tick_count);
-
-    res = f_mount(&SDFatFS, (TCHAR const*)SDPath, 0);
-    printf("res: %d\n", res);
-    if(res != FR_OK)
-     {
-         Error_Handler();
-     }
-     else
-     {
-//       res = f_mkfs((TCHAR const*)SDPath, FM_FAT32, 0, rtext, sizeof(rtext));
-//       printf("res: %d\n", res);
-       if(res != FR_OK)
-       {
-           Error_Handler();
-       }
-       else
-       {
-         //Open file for writing (Create)
-         res = f_open(&SDFile, file_name, FA_CREATE_ALWAYS | FA_WRITE);
-         printf("res: %d\n", res);
-         if(res != FR_OK)
-         {
-             Error_Handler();
-         }
-         else
-         {
-           //Write to the text file
-           res = f_write(&SDFile, wtext, strlen((char *)wtext), (void *)&byteswritten);
-           printf("res: %d\n", res);
-           if((byteswritten == 0) || (res != FR_OK))
-           {
-             Error_Handler();
-           }
-           else
-           {
-             f_close(&SDFile);
-           }
-         }
-       }
-     }
-    f_mount(&SDFatFS, (TCHAR const*)NULL, 0);
-
-    scheduling_kernel_tick_count += 1000;
-    osDelayUntil(scheduling_kernel_tick_count);
+    osThreadSuspend(osThreadGetId());
   }
   /* USER CODE END StartDefaultTask */
 }
