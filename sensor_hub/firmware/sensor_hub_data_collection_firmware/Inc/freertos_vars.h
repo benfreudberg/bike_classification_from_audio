@@ -9,10 +9,10 @@
 #define FREERTOS_VARS_H_
 
 extern osThreadId_t audio_buf_taskHandle;
-extern osThreadId_t audio_buf_task2Handle;
-extern osThreadId_t audioFileTaskHandle;
+extern osThreadId_t audio_file_taskHandle;
 extern osMutexId_t fileMutexHandle;
-extern osSemaphoreId_t audio_buf_1st_data_readyHandle;
-extern osSemaphoreId_t audio_buf_2nd_data_readyHandle;
+extern osMessageQueueId_t audioBufferReadyQueueHandle;
+extern osSemaphoreId_t audio_file_readyHandle;
+extern osSemaphoreId_t audio_buf_finishedHandle;
 
 #endif /* FREERTOS_VARS_H_ */

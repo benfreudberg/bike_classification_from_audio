@@ -215,5 +215,5 @@ Mkfile.old
 dkms.conf
 
 # directories
-*/Debug/
-*/Release/
+Debug/
+Release/

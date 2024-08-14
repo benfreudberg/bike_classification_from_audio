@@ -32,6 +32,7 @@
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
+typedef StaticQueue_t osStaticMessageQDef_t;
 /* USER CODE BEGIN PTD */
 
 /* USER CODE END PTD */
@@ -71,34 +72,38 @@ const osThreadAttr_t audio_buf_task_attributes = {
   .stack_size = 5000 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
-/* Definitions for audioFileTask */
-osThreadId_t audioFileTaskHandle;
-const osThreadAttr_t audioFileTask_attributes = {
-  .name = "audioFileTask",
+/* Definitions for audio_file_task */
+osThreadId_t audio_file_taskHandle;
+const osThreadAttr_t audio_file_task_attributes = {
+  .name = "audio_file_task",
   .stack_size = 5000 * 4,
   .priority = (osPriority_t) osPriorityBelowNormal7,
 };
-/* Definitions for audio_buf_task2 */
-osThreadId_t audio_buf_task2Handle;
-const osThreadAttr_t audio_buf_task2_attributes = {
-  .name = "audio_buf_task2",
-  .stack_size = 5000 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+/* Definitions for audioBufferReadyQueue */
+osMessageQueueId_t audioBufferReadyQueueHandle;
+uint8_t myQueue01Buffer[ 1 * sizeof( int32_t* ) ];
+osStaticMessageQDef_t myQueue01ControlBlock;
+const osMessageQueueAttr_t audioBufferReadyQueue_attributes = {
+  .name = "audioBufferReadyQueue",
+  .cb_mem = &myQueue01ControlBlock,
+  .cb_size = sizeof(myQueue01ControlBlock),
+  .mq_mem = &myQueue01Buffer,
+  .mq_size = sizeof(myQueue01Buffer)
 };
 /* Definitions for fileMutex */
 osMutexId_t fileMutexHandle;
 const osMutexAttr_t fileMutex_attributes = {
   .name = "fileMutex"
 };
-/* Definitions for audio_buf_1st_data_ready */
-osSemaphoreId_t audio_buf_1st_data_readyHandle;
-const osSemaphoreAttr_t audio_buf_1st_data_ready_attributes = {
-  .name = "audio_buf_1st_data_ready"
+/* Definitions for audio_file_ready */
+osSemaphoreId_t audio_file_readyHandle;
+const osSemaphoreAttr_t audio_file_ready_attributes = {
+  .name = "audio_file_ready"
 };
-/* Definitions for audio_buf_2nd_data_ready */
-osSemaphoreId_t audio_buf_2nd_data_readyHandle;
-const osSemaphoreAttr_t audio_buf_2nd_data_ready_attributes = {
-  .name = "audio_buf_2nd_data_ready"
+/* Definitions for audio_buf_finished */
+osSemaphoreId_t audio_buf_finishedHandle;
+const osSemaphoreAttr_t audio_buf_finished_attributes = {
+  .name = "audio_buf_finished"
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -143,11 +148,11 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_MUTEX */
 
   /* Create the semaphores(s) */
-  /* creation of audio_buf_1st_data_ready */
-  audio_buf_1st_data_readyHandle = osSemaphoreNew(1, 0, &audio_buf_1st_data_ready_attributes);
+  /* creation of audio_file_ready */
+  audio_file_readyHandle = osSemaphoreNew(1, 0, &audio_file_ready_attributes);
 
-  /* creation of audio_buf_2nd_data_ready */
-  audio_buf_2nd_data_readyHandle = osSemaphoreNew(1, 0, &audio_buf_2nd_data_ready_attributes);
+  /* creation of audio_buf_finished */
+  audio_buf_finishedHandle = osSemaphoreNew(1, 0, &audio_buf_finished_attributes);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
@@ -156,6 +161,10 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN RTOS_TIMERS */
   /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
+
+  /* Create the queue(s) */
+  /* creation of audioBufferReadyQueue */
+  audioBufferReadyQueueHandle = osMessageQueueNew (1, sizeof(int32_t*), &audioBufferReadyQueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -169,13 +178,10 @@ void MX_FREERTOS_Init(void) {
   leds_taskHandle = osThreadNew(StartLedsTask, NULL, &leds_task_attributes);
 
   /* creation of audio_buf_task */
-  audio_buf_taskHandle = osThreadNew(StartAudioBufTask, (void *) &audio_buf_1st_half, &audio_buf_task_attributes);
+  audio_buf_taskHandle = osThreadNew(StartAudioBufTask, NULL, &audio_buf_task_attributes);
 
-  /* creation of audioFileTask */
-  audioFileTaskHandle = osThreadNew(StartAudioFileTask, NULL, &audioFileTask_attributes);
-
-  /* creation of audio_buf_task2 */
-  audio_buf_task2Handle = osThreadNew(StartAudioBufTask, (void *) &audio_buf_2nd_half, &audio_buf_task2_attributes);
+  /* creation of audio_file_task */
+  audio_file_taskHandle = osThreadNew(StartAudioFileTask, NULL, &audio_file_task_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* USER CODE END RTOS_THREADS */

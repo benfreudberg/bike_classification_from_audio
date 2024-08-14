@@ -1,4 +1,5 @@
 #include "wav_header.h"
+#include "audio_task.h"
 #include <string.h>
 
 void WavHeader_Create(WavHeader * header, uint32_t length_ms) {

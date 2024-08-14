@@ -6,10 +6,6 @@
 #include <assert.h>
 #include <stdint.h>
 
-//defined by system clock speed (120MHz), dfsdm clock divider (40), and dfsdm filter oversampling (68)
-#define AUDIO_SAMPLE_RATE (44100) //really 44118
-#define NUM_CHANNELS      (1)
-
 typedef struct _WavHeader {
     // RIFF Header
     uint8_t  riff_header[4]; // Contains "RIFF"
