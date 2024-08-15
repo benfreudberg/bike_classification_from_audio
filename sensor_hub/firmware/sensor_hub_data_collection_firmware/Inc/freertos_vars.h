@@ -12,7 +12,7 @@ extern osThreadId_t audio_buf_taskHandle;
 extern osThreadId_t audio_file_taskHandle;
 extern osMutexId_t fileMutexHandle;
 extern osMessageQueueId_t audioBufferReadyQueueHandle;
-extern osSemaphoreId_t audio_file_readyHandle;
-extern osSemaphoreId_t audio_buf_finishedHandle;
+extern osMessageQueueId_t audio_file_empty_bufHandle;
+extern osMessageQueueId_t audio_file_full_bufHandle;
 
 #endif /* FREERTOS_VARS_H_ */

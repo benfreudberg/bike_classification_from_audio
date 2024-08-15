@@ -22,26 +22,27 @@ void TimeStamp_GetTimeStampString(char str[]) {
 }
 
 DWORD TimeStamp_GetFatTime() {
-  struct {
-      DWORD second : 5;
-      DWORD minute : 6;
-      DWORD hour   : 5;
-      DWORD day    : 5;
-      DWORD month  : 4;
-      DWORD year   : 7;
-  } date_time;
+  union {
+    struct {
+        DWORD second : 5;
+        DWORD minute : 6;
+        DWORD hour   : 5;
+        DWORD day    : 5;
+        DWORD month  : 4;
+        DWORD year   : 7;
+    } date_time_struct;
+    DWORD date_time_dword;
+  } date_time_union;
 
   if(!time_aquired) {
     TimeStamp_AquireTime();
   }
-  date_time.second = time.Seconds / 2;
-  date_time.minute = time.Minutes;
-  date_time.hour   = time.Hours;
-  date_time.day    = date.Date;
-  date_time.month  = date.Month;
-  date_time.year   = date.Year;
+  date_time_union.date_time_struct.second = time.Seconds / 2;
+  date_time_union.date_time_struct.minute = time.Minutes;
+  date_time_union.date_time_struct.hour   = time.Hours;
+  date_time_union.date_time_struct.day    = date.Date;
+  date_time_union.date_time_struct.month  = date.Month;
+  date_time_union.date_time_struct.year   = date.Year;
 
-  DWORD ret;
-  memcpy(&ret, &date_time, sizeof(DWORD));
-  return ret;
+  return date_time_union.date_time_dword;
 }

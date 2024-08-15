@@ -214,7 +214,7 @@ int main(void)
 //  uint32_t byteswritten, bytesread; /* File write/read counts */
 //  uint8_t wtext[] = "STM32 FATFS works great!"; /* File write buffer */
 //  uint8_t rtext[_MAX_SS];/* File read buffer */
-
+//
 //  res = f_mount(&SDFatFS, (TCHAR const*)SDPath, 0);
 //  printf("res: %d\n", res);
 //  if(res != FR_OK)
@@ -345,15 +345,6 @@ int _write(int file, char *ptr, int len)
   HAL_UART_Transmit(&huart2, (const uint8_t *)ptr, len, 10);
   return len;
 }
-
-//void HAL_DFSDM_FilterRegConvHalfCpltCallback(DFSDM_Filter_HandleTypeDef *hdfsdm_filter){
-//  dma_rec_half_buf_cplt = true;
-//}
-//
-//void HAL_DFSDM_FilterRegConvCpltCallback(DFSDM_Filter_HandleTypeDef *hdfsdm_filter) {
-//  dma_rec_buf_cplt = true;
-//  dma_rec_buf_cplt_count++;
-//}
 
 /* USER CODE END 4 */
 

@@ -12,46 +12,75 @@
 #include <stdbool.h>
 
 #define RECORDING_LENGTH_MS (10000)
+#define FILE_QUEUE_LENGTH   (32) //32 comes from emptyBuf and fullBuf queue size
 
-volatile int32_t raw_rec_buf[2][AUDIO_BUF_LEN/2];
-static float processed_rec_buf[AUDIO_BUF_LEN/2];
+volatile int32_t raw_rec_buf[2][AUDIO_BUF_HALF_LEN];
+static float processed_rec_buf[FILE_QUEUE_LENGTH][AUDIO_BUF_HALF_LEN];
 static int buf_full_count = 0;
 static FSIZE_t file_write_index = 0;
 
 void StartAudioFileTask(void *argument) {
+  float * processed_rec_buf_part;
   WavHeader header;
   uint32_t byteswritten;
   FRESULT res;
 
   //todo: mount filesystem elsewhere
   res = f_mount(&SDFatFS, (TCHAR const*)SDPath, 0);
-  printf("mount result: %d\n", res);
+  if (res) {
+    printf("sd mount failed with result: %d\n", res);
+    osThreadExit();
+  }
+
+  /* write header data into temporary wav file */
+  WavHeader_Create(&header, RECORDING_LENGTH_MS);
 
   osMutexAcquire(fileMutexHandle, osWaitForever);
   res = f_open(&SDFile, "temp_audio_file.wav", FA_CREATE_ALWAYS | FA_WRITE);
-  printf("audio file open result: %d\n", res);
+  if (res) {
+    printf("audio file open failed with result: %d\n", res);
+    osThreadExit();
+  }
 
-  WavHeader_Create(&header, RECORDING_LENGTH_MS);
   res = f_write(&SDFile, (const void*)&header, sizeof(WavHeader), (void *)&byteswritten);
-  printf("audio file header write result: %d\n", res);
+  if (res) {
+    printf("audio file header write failed with result: %d\n", res);
+    osThreadExit();
+  }
   file_write_index += byteswritten;
 
   f_close(&SDFile);
   osMutexRelease(fileMutexHandle);
 
-  //let audio buf task start
-  osSemaphoreRelease(audio_file_readyHandle);
+  /* write streaming audio data into temporary wav file */
+  while (1) {
+    //could make this faster by getting all elements from the queue if there is more than one available and doing one (or two) big write operations
+    osMessageQueueGet(audio_file_full_bufHandle, (void*)&processed_rec_buf_part, NULL, osWaitForever);
+    if (processed_rec_buf_part == NULL) {
+      //NULL is a marker to indicate that we are done streaming
+      break;
+    }
 
-  //wait until audio buf task data collection is finished
-  osSemaphoreAcquire(audio_buf_finishedHandle, osWaitForever);
+    osMutexAcquire(fileMutexHandle, osWaitForever);
+    f_open(&SDFile, "temp_audio_file.wav", FA_WRITE);
+    f_lseek(&SDFile, file_write_index);
+    f_write(&SDFile, (const void*)processed_rec_buf_part, sizeof(float)*AUDIO_BUF_HALF_LEN, (void *)&byteswritten);
+    f_close(&SDFile);
+    file_write_index += byteswritten;
+    osMutexRelease(fileMutexHandle);
 
+    osMessageQueuePut(audio_file_empty_bufHandle, (void*)&processed_rec_buf_part, osPriorityNormal, osWaitForever);
+  }
+
+  /* copy temporary wav file to a new file with the current time as the name */
   char file_name[25];
   TimeStamp_GetTimeStampString(file_name);
   strcat(file_name, ".wav");
 
   printf("copying file...\n");
   osMutexAcquire(fileMutexHandle, osWaitForever);
-  int copy_result = CopyFile("temp_audio_file.wav", file_name, (BYTE*)raw_rec_buf, sizeof(raw_rec_buf));
+  //processed_rec_buf is no longer needed so we can reuse it here
+  int copy_result = CopyFile("temp_audio_file.wav", file_name, (BYTE*)processed_rec_buf, sizeof(processed_rec_buf));
   osMutexRelease(fileMutexHandle);
 
   printf("copy_result: %d\n", copy_result);
@@ -64,35 +93,53 @@ void StartAudioFileTask(void *argument) {
 
 void StartAudioBufTask(void *argument) {
   volatile int32_t * raw_rec_buf_part;
-  uint32_t byteswritten;
+  float * processed_rec_buf_part;
   bool finished = false;
+  uint32_t available_bufs_low_point = 9999;
 
-  osSemaphoreAcquire(audio_file_readyHandle, osWaitForever);
+  //initialize audio_file_empty_buf queue
+  for (int i = 0; i < FILE_QUEUE_LENGTH; i++) {
+    processed_rec_buf_part = &processed_rec_buf[i][0];
+    osMessageQueuePut(audio_file_empty_bufHandle, (void*)&processed_rec_buf_part, osPriorityNormal, 0);
+  }
 
   while (1) {
+    //get address of buffer that has fresh raw data ready from DFSDM DMA interrupt
     osMessageQueueGet(audioBufferReadyQueueHandle, (void*)&raw_rec_buf_part, NULL, osWaitForever);
 
-    if (buf_full_count >= RECORDING_LENGTH_MS * AUDIO_SAMPLE_RATE / AUDIO_BUF_LEN / 1000) {
+    //stop streaming after the specified time
+    if (buf_full_count >= RECORDING_LENGTH_MS * AUDIO_SAMPLE_RATE / AUDIO_BUF_HALF_LEN / 1000) {
+      //stop the microphone PDM clocking and data collection
       HAL_DFSDM_FilterRegularStop_DMA(&hdfsdm1_filter0);
       printf("finished recording audio\n");
       finished = true;
     }
 
-    //mutex protect processed_rec_buf and file writing
-    osMutexAcquire(fileMutexHandle, osWaitForever);
-    for (int i = 0; i<AUDIO_BUF_LEN/2; i++) {
-      // full scale range with Sinc3 and FOSR set to 68 is +/- 68^3, approximately 2^18.26
-      processed_rec_buf[i] = ((float)(raw_rec_buf_part[i]>>8)) / (2<<18); //only upper 24 bits are data
+    /* process raw data into floats and put it in buffer for file task to save to SD card */
+    uint32_t available_bufs = osMessageQueueGetCount(audio_file_empty_bufHandle);
+    if (available_bufs < available_bufs_low_point) {
+      available_bufs_low_point = available_bufs;
     }
-    f_open(&SDFile, "temp_audio_file.wav", FA_WRITE);
-    f_lseek(&SDFile, file_write_index);
-    f_write(&SDFile, (const void*)processed_rec_buf, sizeof(processed_rec_buf), (void *)&byteswritten);
-    f_close(&SDFile);
-    file_write_index += byteswritten;
-    osMutexRelease(fileMutexHandle);
+    osStatus_t buf_queue_status = osMessageQueueGet(audio_file_empty_bufHandle,
+                                                          (void*)&processed_rec_buf_part, NULL, 0);
+    if (buf_queue_status != osOK) {
+      printf("ERROR: issue getting empty buffer pointer\n");
+      osThreadExit();
+    }
+    for (int i = 0; i < AUDIO_BUF_HALF_LEN; i++) {
+      // full scale range with Sinc3 and FOSR set to 68 is +/- 68^3, approximately 2^18.26
+      processed_rec_buf_part[i] = ((float)(raw_rec_buf_part[i]>>8)) / (2<<18); //only upper 24 bits are data
+    }
+    buf_queue_status = osMessageQueuePut(audio_file_full_bufHandle, (void*)&processed_rec_buf_part, osPriorityNormal, 0);
+    if (buf_queue_status != osOK) {
+      printf("ERROR: issue sending full buffer pointer\n");
+      osThreadExit();
+    }
 
     if (finished) {
-      osSemaphoreRelease(audio_buf_finishedHandle);
+      printf("available bufs low point: %lu\n", available_bufs_low_point);
+      processed_rec_buf_part = NULL; //NULL is a marker to indicate that we are done streaming
+      osMessageQueuePut(audio_file_full_bufHandle, (void*)&processed_rec_buf_part, osPriorityNormal, 0);
       osThreadExit();
     }
   }
@@ -101,13 +148,14 @@ void StartAudioBufTask(void *argument) {
 
 void HAL_DFSDM_FilterRegConvHalfCpltCallback(DFSDM_Filter_HandleTypeDef *hdfsdm_filter){
   volatile int32_t * const raw_rec_buf_part = &raw_rec_buf[0][0];
+  buf_full_count++;
   osMessageQueuePut(audioBufferReadyQueueHandle, (void*)&raw_rec_buf_part, osPriorityNormal, 0);
   //add warning of missed data if queuePut finds full queue?
 }
 
 void HAL_DFSDM_FilterRegConvCpltCallback(DFSDM_Filter_HandleTypeDef *hdfsdm_filter) {
-  buf_full_count++;
   volatile int32_t * const raw_rec_buf_part = &raw_rec_buf[1][0];
+  buf_full_count++;
   osMessageQueuePut(audioBufferReadyQueueHandle, (void*)&raw_rec_buf_part, osPriorityNormal, 0);
   //add warning of missed data if queuePut finds full queue?
 }

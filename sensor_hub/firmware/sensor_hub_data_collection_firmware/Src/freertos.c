@@ -32,7 +32,6 @@
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
-typedef StaticQueue_t osStaticMessageQDef_t;
 /* USER CODE BEGIN PTD */
 
 /* USER CODE END PTD */
@@ -81,29 +80,23 @@ const osThreadAttr_t audio_file_task_attributes = {
 };
 /* Definitions for audioBufferReadyQueue */
 osMessageQueueId_t audioBufferReadyQueueHandle;
-uint8_t myQueue01Buffer[ 1 * sizeof( int32_t* ) ];
-osStaticMessageQDef_t myQueue01ControlBlock;
 const osMessageQueueAttr_t audioBufferReadyQueue_attributes = {
-  .name = "audioBufferReadyQueue",
-  .cb_mem = &myQueue01ControlBlock,
-  .cb_size = sizeof(myQueue01ControlBlock),
-  .mq_mem = &myQueue01Buffer,
-  .mq_size = sizeof(myQueue01Buffer)
+  .name = "audioBufferReadyQueue"
+};
+/* Definitions for audio_file_empty_buf */
+osMessageQueueId_t audio_file_empty_bufHandle;
+const osMessageQueueAttr_t audio_file_empty_buf_attributes = {
+  .name = "audio_file_empty_buf"
+};
+/* Definitions for audio_file_full_buf */
+osMessageQueueId_t audio_file_full_bufHandle;
+const osMessageQueueAttr_t audio_file_full_buf_attributes = {
+  .name = "audio_file_full_buf"
 };
 /* Definitions for fileMutex */
 osMutexId_t fileMutexHandle;
 const osMutexAttr_t fileMutex_attributes = {
   .name = "fileMutex"
-};
-/* Definitions for audio_file_ready */
-osSemaphoreId_t audio_file_readyHandle;
-const osSemaphoreAttr_t audio_file_ready_attributes = {
-  .name = "audio_file_ready"
-};
-/* Definitions for audio_buf_finished */
-osSemaphoreId_t audio_buf_finishedHandle;
-const osSemaphoreAttr_t audio_buf_finished_attributes = {
-  .name = "audio_buf_finished"
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -147,13 +140,6 @@ void MX_FREERTOS_Init(void) {
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
 
-  /* Create the semaphores(s) */
-  /* creation of audio_file_ready */
-  audio_file_readyHandle = osSemaphoreNew(1, 0, &audio_file_ready_attributes);
-
-  /* creation of audio_buf_finished */
-  audio_buf_finishedHandle = osSemaphoreNew(1, 0, &audio_buf_finished_attributes);
-
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
   /* USER CODE END RTOS_SEMAPHORES */
@@ -165,6 +151,12 @@ void MX_FREERTOS_Init(void) {
   /* Create the queue(s) */
   /* creation of audioBufferReadyQueue */
   audioBufferReadyQueueHandle = osMessageQueueNew (1, sizeof(int32_t*), &audioBufferReadyQueue_attributes);
+
+  /* creation of audio_file_empty_buf */
+  audio_file_empty_bufHandle = osMessageQueueNew (32, sizeof(float *), &audio_file_empty_buf_attributes);
+
+  /* creation of audio_file_full_buf */
+  audio_file_full_bufHandle = osMessageQueueNew (32, sizeof(float *), &audio_file_full_buf_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
