@@ -18,7 +18,7 @@ void TimeStamp_GetTimeStampString(char str[]) {
   if(!time_aquired) {
     TimeStamp_AquireTime();
   }
-  sprintf(str, "%04d-%02d-%02d_%02d-%02d-%02d", 1980 + date.Year, date.Month, date.Date, time.Hours, time.Minutes, time.Seconds);
+  sprintf(str, "%04d-%02d-%02d--%02d-%02d-%02d", 1980 + date.Year, date.Month, date.Date, time.Hours, time.Minutes, time.Seconds);
 }
 
 DWORD TimeStamp_GetFatTime() {

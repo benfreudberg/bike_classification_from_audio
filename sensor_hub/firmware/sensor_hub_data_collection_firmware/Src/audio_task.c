@@ -11,8 +11,8 @@
 #include <string.h>
 #include <stdbool.h>
 
-#define RECORDING_LENGTH_MS (10000)
-#define FILE_QUEUE_LENGTH   (32) //32 comes from emptyBuf and fullBuf queue size
+#define RECORDING_LENGTH_MS (8000) //must be multiple of (AUDIO_BUF_HALF_LEN/AUDIO_SAMPLE_RATE*1000) -> 20ms
+#define FILE_QUEUE_LENGTH   (16) //16 comes from emptyBuf and fullBuf queue size
 
 volatile int32_t raw_rec_buf[2][AUDIO_BUF_HALF_LEN];
 static float processed_rec_buf[FILE_QUEUE_LENGTH][AUDIO_BUF_HALF_LEN];
@@ -25,12 +25,7 @@ void StartAudioFileTask(void *argument) {
   uint32_t byteswritten;
   FRESULT res;
 
-  //todo: mount filesystem elsewhere
-  res = f_mount(&SDFatFS, (TCHAR const*)SDPath, 0);
-  if (res) {
-    printf("sd mount failed with result: %d\n", res);
-    osThreadExit();
-  }
+  osSemaphoreAcquire(file_system_readyHandle, osWaitForever);
 
   /* write header data into temporary wav file */
   WavHeader_Create(&header, RECORDING_LENGTH_MS);
@@ -73,7 +68,7 @@ void StartAudioFileTask(void *argument) {
   }
 
   /* copy temporary wav file to a new file with the current time as the name */
-  char file_name[25];
+  char file_name[50]; //need 25 bytes
   TimeStamp_GetTimeStampString(file_name);
   strcat(file_name, ".wav");
 
@@ -85,9 +80,7 @@ void StartAudioFileTask(void *argument) {
 
   printf("copy_result: %d\n", copy_result);
 
-  //todo: unmount filesystem elsewhere
-  f_mount(&SDFatFS, (TCHAR const*)NULL, 0);
-
+  osSemaphoreRelease(task_finishedHandle);
   osThreadExit();
 }
 

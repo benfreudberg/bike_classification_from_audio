@@ -26,6 +26,7 @@
 #include "rtc.h"
 #include "sdmmc.h"
 #include "spi.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
@@ -33,6 +34,7 @@
 /* USER CODE BEGIN Includes */
 #include "audio_task.h"
 #include "timestamp.h"
+#include "freertos_vars.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
@@ -112,62 +114,48 @@ int main(void)
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
   MX_RTC_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   //microphone
   HAL_DFSDM_FilterRegularStart_DMA(&hdfsdm1_filter0, (int32_t*)&raw_rec_buf[0][0], AUDIO_BUF_LEN);
 
-  //get RTC time
-//  RTC_TimeTypeDef sTime;
-//  RTC_DateTypeDef sDate;
-//  HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
-//  HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
-//  sTime.Seconds = 0;
-//  sTime.Minutes = 24;
-//  sTime.Hours = 18;
-//  sDate.Date = 6;
-//  sDate.Month = 8;
-//  sDate.Year = 44;
-//  sDate.WeekDay = RTC_WEEKDAY_TUESDAY;
-//  HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
-//  HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
+  //RTC time
+#if 0 //set RTC time
+  RTC_TimeTypeDef sTime;
+  RTC_DateTypeDef sDate;
+  HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+  HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
+  sTime.Seconds = 0;
+  sTime.Minutes = 24;
+  sTime.Hours = 18;
+  sDate.Date = 6;
+  sDate.Month = 8;
+  sDate.Year = 44;
+  sDate.WeekDay = RTC_WEEKDAY_TUESDAY;
+  HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+  HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
+#endif
   TimeStamp_AquireTime();
-  char timestamp[20];
+  char timestamp[50]; //need 21 bytes
   TimeStamp_GetTimeStampString(timestamp);
   printf("timestamp is %s\n", timestamp);
 
   //enable backup battery charging
   HAL_PWREx_EnableBatteryCharging(PWR_BATTERY_CHARGING_RESISTOR_5);
 
-  //mags
-  const uint8_t tx_data[] = {0x2f|0x80,0};
-  uint8_t rx_data1[] = {0,0};
-  uint8_t rx_data2[] = {0,0};
-
-  HAL_SPI_TransmitReceive(&hspi1, tx_data, rx_data1, sizeof(tx_data), 1); //prime spi port
-
-  HAL_GPIO_WritePin(GPIOC, SPI1_CS1_Pin, GPIO_PIN_RESET);
-  HAL_SPI_TransmitReceive(&hspi1, tx_data, rx_data1, sizeof(tx_data), 1);
-  HAL_GPIO_WritePin(GPIOC, SPI1_CS1_Pin, GPIO_PIN_SET);
-
-  HAL_GPIO_WritePin(GPIOC, SPI1_CS2_Pin, GPIO_PIN_RESET);
-  HAL_SPI_TransmitReceive(&hspi1, tx_data, rx_data2, sizeof(tx_data), 1);
-  HAL_GPIO_WritePin(GPIOC, SPI1_CS2_Pin, GPIO_PIN_SET);
-
-  printf("spi1_cs1 read from 0x2f: 0x%02x\n", rx_data1[1]);
-  printf("spi1_cs2 read from 0x2f: 0x%02x\n", rx_data2[1]);
-
   //cam spi
   const uint8_t tx_data_cam_write[] = {0x0|0x80,0x4b};
   const uint8_t tx_data_cam_read[] = {0x0|0x00,0x00};
   uint8_t rx_data_cam[] = {0,0};
 
-  HAL_SPI_TransmitReceive(&hspi2, tx_data_cam_write, rx_data_cam, sizeof(tx_data), 1); //prime spi port
+  HAL_SPI_TransmitReceive(&hspi2, tx_data_cam_write, rx_data_cam, sizeof(tx_data_cam_write), 1); //prime spi port
+  HAL_SPI_TransmitReceive(&hspi1, tx_data_cam_write, rx_data_cam, sizeof(tx_data_cam_write), 1); //prime spi port
 
   HAL_GPIO_WritePin(GPIOB, SPI2_CS_Pin, GPIO_PIN_RESET);
-  HAL_SPI_TransmitReceive(&hspi2, tx_data_cam_write, rx_data_cam, sizeof(tx_data), 1);
+  HAL_SPI_TransmitReceive(&hspi2, tx_data_cam_write, rx_data_cam, sizeof(tx_data_cam_write), 1);
   HAL_GPIO_WritePin(GPIOB, SPI2_CS_Pin, GPIO_PIN_SET);
   HAL_GPIO_WritePin(GPIOB, SPI2_CS_Pin, GPIO_PIN_RESET);
-  HAL_SPI_TransmitReceive(&hspi2, tx_data_cam_read, rx_data_cam, sizeof(tx_data), 1);
+  HAL_SPI_TransmitReceive(&hspi2, tx_data_cam_read, rx_data_cam, sizeof(tx_data_cam_write), 1);
   HAL_GPIO_WritePin(GPIOB, SPI2_CS_Pin, GPIO_PIN_SET);
   printf("cam read from 0x00: 0x%02x\n", rx_data_cam[1]);
 
@@ -346,6 +334,14 @@ int _write(int file, char *ptr, int len)
   return len;
 }
 
+void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi) {
+  if (hspi == &hspi1) { //mags
+    osSemaphoreRelease(spi1_semHandle);
+  } else if (hspi == &hspi2) { //cam
+    osSemaphoreRelease(spi2_semHandle);
+  }
+}
+
 /* USER CODE END 4 */
 
 /**
@@ -365,7 +361,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-
+  if (htim->Instance == TIM2) {
+    osSemaphoreRelease(tim2_semHandle);
+  }
   /* USER CODE END Callback 1 */
 }
 
