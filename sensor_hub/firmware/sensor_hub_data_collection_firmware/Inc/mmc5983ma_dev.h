@@ -1,3 +1,7 @@
+/*
+ * some code borrowed from https://github.com/sparkfun/SparkFun_MMC5983MA_Magnetometer_Arduino_Library/blob/main/src/SparkFun_MMC5983MA_Arduino_Library_Constants.h
+ */
+
 #ifndef MMC5983MA_DEV_H_
 #define MMC5983MA_DEV_H_
 

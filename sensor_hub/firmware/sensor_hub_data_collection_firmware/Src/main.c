@@ -35,6 +35,7 @@
 #include "audio_task.h"
 #include "timestamp.h"
 #include "freertos_vars.h"
+#include "arducam.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
@@ -59,7 +60,9 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+//todo: delete
+uint8_t image_data[10240] = {0}; //10kB
+int image_size;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -143,108 +146,46 @@ int main(void)
   //enable backup battery charging
   HAL_PWREx_EnableBatteryCharging(PWR_BATTERY_CHARGING_RESISTOR_5);
 
-  //cam spi
-  const uint8_t tx_data_cam_write[] = {0x0|0x80,0x4b};
-  const uint8_t tx_data_cam_read[] = {0x0|0x00,0x00};
-  uint8_t rx_data_cam[] = {0,0};
+  //prime spi ports with dummy transfers
+  const uint8_t tx_data_dummy_write[] = {0x0,0x0};
+  uint8_t rx_data[] = {0,0};
+  HAL_SPI_TransmitReceive(&hspi2, tx_data_dummy_write, rx_data, sizeof(tx_data_dummy_write), 1); //prime cam spi port
+  HAL_SPI_TransmitReceive(&hspi1, tx_data_dummy_write, rx_data, sizeof(tx_data_dummy_write), 1); //prime mag spi port
 
-  HAL_SPI_TransmitReceive(&hspi2, tx_data_cam_write, rx_data_cam, sizeof(tx_data_cam_write), 1); //prime spi port
-  HAL_SPI_TransmitReceive(&hspi1, tx_data_cam_write, rx_data_cam, sizeof(tx_data_cam_write), 1); //prime spi port
+  //arducam
+  const Arducam cam = {
+      .cs_port = SPI2_CS_GPIO_Port,
+      .cs_pin = SPI2_CS_Pin,
+      .hspi = &hspi2,
+      .hi2c = &hi2c2,
+      .i2c_addr = 0x30,
+  };
 
-  HAL_GPIO_WritePin(GPIOB, SPI2_CS_Pin, GPIO_PIN_RESET);
-  HAL_SPI_TransmitReceive(&hspi2, tx_data_cam_write, rx_data_cam, sizeof(tx_data_cam_write), 1);
-  HAL_GPIO_WritePin(GPIOB, SPI2_CS_Pin, GPIO_PIN_SET);
-  HAL_GPIO_WritePin(GPIOB, SPI2_CS_Pin, GPIO_PIN_RESET);
-  HAL_SPI_TransmitReceive(&hspi2, tx_data_cam_read, rx_data_cam, sizeof(tx_data_cam_write), 1);
-  HAL_GPIO_WritePin(GPIOB, SPI2_CS_Pin, GPIO_PIN_SET);
-  printf("cam read from 0x00: 0x%02x\n", rx_data_cam[1]);
+  uint16_t cam_sensor_pid = ArducamSensorGetPID(&cam);
+  printf("cam sensor PID: 0x%04x\n", cam_sensor_pid);
 
-  //cam i2c (sequential read not supported)
-  uint8_t tx_data_cam_i2c_set_to_reg_bank_2[] = {0xff, 0x01};
-  uint8_t tx_data_cam_i2c_set_reg_to_read_to_idA = 0x1c;
-  uint8_t tx_data_cam_i2c_set_reg_to_read_to_idB = 0x1d;
-  uint8_t rx_data_cam_i2c_idA, rx_data_cam_i2c_idB;
-  HAL_I2C_Master_Transmit(
-      &hi2c2,
-      0x30<<1,
-      tx_data_cam_i2c_set_to_reg_bank_2,
-      sizeof(tx_data_cam_i2c_set_to_reg_bank_2),
-      1);
-  HAL_I2C_Master_Transmit(
-      &hi2c2,
-      0x30<<1,
-      &tx_data_cam_i2c_set_reg_to_read_to_idA,
-      sizeof(tx_data_cam_i2c_set_reg_to_read_to_idA),
-      1);
-  HAL_I2C_Master_Receive(
-      &hi2c2,
-      0x30<<1,
-      &rx_data_cam_i2c_idA,
-      sizeof(rx_data_cam_i2c_idA),
-      1);
-  HAL_I2C_Master_Transmit(
-      &hi2c2,
-      0x30<<1,
-      &tx_data_cam_i2c_set_reg_to_read_to_idB,
-      sizeof(tx_data_cam_i2c_set_reg_to_read_to_idB),
-      1);
-  HAL_I2C_Master_Receive(
-      &hi2c2,
-      0x30<<1,
-      &rx_data_cam_i2c_idB,
-      sizeof(rx_data_cam_i2c_idB),
-      1);
-  uint16_t cam_i2c_id = (uint16_t)rx_data_cam_i2c_idA<<8 | rx_data_cam_i2c_idB;
-  printf("cam i2c ID: 0x%04x\n", cam_i2c_id);
+  uint32_t fifo_size = ArducamChipGetFifoSize(&cam);
+  printf("cam fifo size: %lu\n", fifo_size);
 
-  //sd card file system
-//  FRESULT res; /* FatFs function common result code */
-//  uint32_t byteswritten, bytesread; /* File write/read counts */
-//  uint8_t wtext[] = "STM32 FATFS works great!"; /* File write buffer */
-//  uint8_t rtext[_MAX_SS];/* File read buffer */
-//
-//  res = f_mount(&SDFatFS, (TCHAR const*)SDPath, 0);
-//  printf("res: %d\n", res);
-//  if(res != FR_OK)
-//   {
-//       Error_Handler();
-//   }
-//   else
-//   {
-//     res = f_mkfs((TCHAR const*)SDPath, FM_FAT32, 0, rtext, sizeof(rtext));
-//     printf("res: %d\n", res);
-//     if(res != FR_OK)
-//     {
-//         Error_Handler();
-//     }
-//     else
-//     {
-//       //Open file for writing (Create)
-//       res = f_open(&SDFile, "STM32.TXT", FA_CREATE_ALWAYS | FA_WRITE);
-//       printf("res: %d\n", res);
-//       if(res != FR_OK)
-//       {
-//           Error_Handler();
-//       }
-//       else
-//       {
-//         //Write to the text file
-//         res = f_write(&SDFile, wtext, strlen((char *)wtext), (void *)&byteswritten);
-//         printf("res: %d\n", res);
-//         if((byteswritten == 0) || (res != FR_OK))
-//         {
-//           Error_Handler();
-//         }
-//         else
-//         {
-//           f_close(&SDFile);
-//         }
-//       }
-//     }
-//   }
-//  f_mount(&SDFatFS, (TCHAR const*)NULL, 0);
-//  res = f_open(&SDFile, "audio_sample_long_file_name.wav", FA_CREATE_ALWAYS | FA_WRITE); //max 8 chars before '.'?
-//  printf("res: %d\n", res);
+  printf("cam fifo full?: %d\n", ArducamChipFifoFull(&cam));
+
+  uint8_t year, month, date;
+  ArducamChipGetVersionDate(&cam, &year, &month, &date);
+  printf("arducam chip version date: %04u-%02u-%02u\n", (uint16_t)year + 2000, month, date);
+
+  uint8_t test_reg_val = 0x4b;
+  ArducamChipWriteTestReg(&cam, test_reg_val);
+  printf("arducam chip test reg value after writing 0x%2x: 0x%2x\n", test_reg_val, ArducamChipReadTestReg(&cam));
+
+  ArducamInit(&cam);
+
+  ArducamCapture(&cam);
+  image_size = fifo_size = ArducamChipGetFifoSize(&cam);
+  printf("cam fifo size: %lu\n", fifo_size);
+  printf("cam fifo full?: %d\n", ArducamChipFifoFull(&cam));
+
+  ArducamReadImage(&cam, image_data, image_size);
+
 
   /* USER CODE END 2 */
 

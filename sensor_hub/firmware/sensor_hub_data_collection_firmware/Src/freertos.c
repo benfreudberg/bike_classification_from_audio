@@ -263,6 +263,14 @@ void StartDefaultTask(void *argument)
   }
 #endif
 
+  //todo: delete
+  uint32_t byteswritten;
+  char file_name[50] = "test_image";
+  strcat(file_name, ".jpg");
+  f_open(&SDFile, file_name, FA_CREATE_ALWAYS | FA_WRITE);
+  f_write(&SDFile, image_data, image_size, (void *)&byteswritten);
+  f_close(&SDFile);
+
   while(osSemaphoreRelease(file_system_readyHandle) == osOK); //inform all threads that the file system is ready
 
   //wait for all data collection threads to indicate they are done

@@ -1,5 +1,6 @@
 #include "rtc.h"
 #include "timestamp.h"
+#include "bit_manipulation.h"
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
@@ -22,27 +23,17 @@ void TimeStamp_GetTimeStampString(char str[]) {
 }
 
 DWORD TimeStamp_GetFatTime() {
-  union {
-    struct {
-        DWORD second : 5;
-        DWORD minute : 6;
-        DWORD hour   : 5;
-        DWORD day    : 5;
-        DWORD month  : 4;
-        DWORD year   : 7;
-    } date_time_struct;
-    DWORD date_time_dword;
-  } date_time_union;
-
   if(!time_aquired) {
     TimeStamp_AquireTime();
   }
-  date_time_union.date_time_struct.second = time.Seconds / 2;
-  date_time_union.date_time_struct.minute = time.Minutes;
-  date_time_union.date_time_struct.hour   = time.Hours;
-  date_time_union.date_time_struct.day    = date.Date;
-  date_time_union.date_time_struct.month  = date.Month;
-  date_time_union.date_time_struct.year   = date.Year;
 
-  return date_time_union.date_time_dword;
+  DWORD date_time = 0;
+  SET_FIELD(date_time, 5, 0, time.Seconds / 2);
+  SET_FIELD(date_time, 6, 5, time.Minutes);
+  SET_FIELD(date_time, 5, 11, time.Hours);
+  SET_FIELD(date_time, 5, 16, date.Date);
+  SET_FIELD(date_time, 4, 21, date.Month);
+  SET_FIELD(date_time, 7, 25, date.Year);
+
+  return date_time;
 }
