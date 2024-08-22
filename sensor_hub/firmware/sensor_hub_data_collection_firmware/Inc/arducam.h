@@ -40,5 +40,7 @@ void ArducamInit(const Arducam *cam);
 void ArducamCapture(const Arducam *cam);
 void ArducamReadImage(const Arducam *cam, uint8_t *image_data, uint32_t image_size);
 void ArducamReadAndSaveImage(const Arducam *cam, uint8_t *buffer, uint32_t buffer_size, uint32_t image_size);
+void ArducamReset(const Arducam *cam);
+void ArducamPowerDown(const Arducam *cam);
 
 #endif /* ARDUCAM_H_ */

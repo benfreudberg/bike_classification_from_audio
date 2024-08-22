@@ -20,7 +20,7 @@
 static void SensorWriteReg(const Arducam *cam, uint8_t reg_id, uint8_t val) {
   uint8_t tx_data[2] = {reg_id, val};
 
-  HAL_StatusTypeDef ret = HAL_I2C_Master_Transmit_IT(
+  HAL_I2C_Master_Transmit_IT(
       cam->hi2c,
       cam->i2c_addr << 1,
       tx_data,
@@ -151,15 +151,11 @@ uint8_t ArducamChipReadTestReg(const Arducam *cam) {
 
 
 void ArducamInit(const Arducam *cam) {
-  //reset CLPD?
   ChipWriteReg(cam, ARDUCHIP_RESET_CLPD, ARDUCHIP_RESET_CLPD_RESET_BIT);
-//  HAL_Delay(100);
   ChipWriteReg(cam, ARDUCHIP_RESET_CLPD, 0);
-//  HAL_Delay(100);
 
   SensorSetRegBank1(cam);
   SensorWriteReg(cam, 0x12, 0x80);
-//  HAL_Delay(100);
   SensorWriteRegList(cam, OV2640_JPEG_INIT);
   SensorWriteRegList(cam, OV2640_YUV422);
   SensorWriteRegList(cam, OV2640_JPEG);
@@ -167,7 +163,7 @@ void ArducamInit(const Arducam *cam) {
   SensorWriteReg(cam, 0x15, 0x00);
   SensorWriteRegList(cam, OV2640_1024x768_JPEG);
 
-  osDelay(900);
+  osDelay(300);
   ChipWriteReg(cam, ARDUCHIP_FIFO, ARDUCHIP_FIFO_CLEAR_BIT);
   ChipWriteReg(cam, ARDUCHIP_FRAMES, 0);
 }
@@ -180,6 +176,7 @@ void ArducamCapture(const Arducam *cam) {
   ChipWriteReg(cam, ARDUCHIP_FIFO, ARDUCHIP_FIFO_START_BIT);
 
   while (!(status & ARDUCHIP_STATUS_FIFO_DONE_BIT)) {
+    osDelay(5);
     status = ChipReadReg(cam, ARDUCHIP_STATUS);
   }
 }
@@ -219,4 +216,12 @@ void ArducamReadAndSaveImage(const Arducam *cam, uint8_t *buffer, uint32_t buffe
       printf("ERROR: missing image data\n");
     }
   }
+}
+
+void ArducamReset(const Arducam *cam) {
+  ChipWriteReg(cam, ARDUCHIP_GPIO, ARDUCHIP_GPIO_RESET_BIT);
+}
+
+void ArducamPowerDown(const Arducam *cam) {
+  ChipWriteReg(cam, ARDUCHIP_GPIO, ARDUCHIP_GPIO_POWER_DISABLE_BIT);
 }

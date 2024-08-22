@@ -41,9 +41,10 @@
 #define ARDUCHIP_FIFO_START_BIT             (1<<1)
 #define ARDUCHIP_FIFO_RESET_BIT             (1<<4)
 
+//documentation for these bits is bad, hard to know what's going on
 #define ARDUCHIP_GPIO_RESET_BIT             (1<<0)
-#define ARDUCHIP_GPIO_POWER_DOWN_BIT        (1<<1)
-#define ARDUCHIP_GPIO_POWER_ENABLE_BIT      (1<<2)
+#define ARDUCHIP_GPIO_STANDBY_BIT           (1<<1)
+#define ARDUCHIP_GPIO_POWER_DISABLE_BIT     (1<<2)
 
 #define ARDUCHIP_RESET_CLPD_RESET_BIT       (1<<7)
 

@@ -198,14 +198,13 @@ void StartMagTask(void *argument) {
   }
   HAL_TIM_Base_Stop_IT(&htim2);
   printf("finished recording mag data\n");
-  osSemaphoreRelease(i2c2_semHandle);
 
   /* data collection is done, so we can go low priority and wait for audio streaming
    * to finish before saving data to sd card
    */
   osThreadSetPriority(osThreadGetId(), osPriorityBelowNormal);
   while(osThreadGetState(audio_file_taskHandle) != osThreadTerminated) {
-    osDelay(100);
+    osDelay(25);
   }
   osSemaphoreAcquire(file_system_readyHandle, osWaitForever);
   SaveMagDataToSdCard();

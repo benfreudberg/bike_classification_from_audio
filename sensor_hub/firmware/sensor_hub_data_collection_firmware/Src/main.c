@@ -150,41 +150,6 @@ int main(void)
   HAL_SPI_TransmitReceive(&hspi2, tx_data_dummy, rx_data, sizeof(tx_data_dummy), 1); //prime cam spi port
   HAL_SPI_TransmitReceive(&hspi1, tx_data_dummy, rx_data, sizeof(tx_data_dummy), 1); //prime mag spi port
 
-  //arducam
-//  const Arducam cam = {
-//      .cs_port = SPI2_CS_GPIO_Port,
-//      .cs_pin = SPI2_CS_Pin,
-//      .hspi = &hspi2,
-//      .hi2c = &hi2c2,
-//      .i2c_addr = 0x30,
-//  };
-//
-//  uint16_t cam_sensor_pid = ArducamSensorGetPID(&cam);
-//  printf("cam sensor PID: 0x%04x\n", cam_sensor_pid);
-//
-//  uint32_t fifo_size = ArducamChipGetFifoSize(&cam);
-//  printf("cam fifo size: %lu\n", fifo_size);
-//
-//  printf("cam fifo full?: %d\n", ArducamChipFifoFull(&cam));
-//
-//  uint8_t year, month, date;
-//  ArducamChipGetVersionDate(&cam, &year, &month, &date);
-//  printf("arducam chip version date: %04u-%02u-%02u\n", (uint16_t)year + 2000, month, date);
-//
-//  uint8_t test_reg_val = 0x4b;
-//  ArducamChipWriteTestReg(&cam, test_reg_val);
-//  printf("arducam chip test reg value after writing 0x%2x: 0x%2x\n", test_reg_val, ArducamChipReadTestReg(&cam));
-//
-//  ArducamInit(&cam);
-//
-//  ArducamCapture(&cam);
-//  image_size = fifo_size = ArducamChipGetFifoSize(&cam);
-//  printf("cam fifo size: %lu\n", fifo_size);
-//  printf("cam fifo full?: %d\n", ArducamChipFifoFull(&cam));
-//
-//  ArducamReadImage(&cam, image_data, image_size);
-
-
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -291,6 +256,10 @@ void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c) {
   if (hi2c == &hi2c2) {
     osSemaphoreRelease(i2c2_semHandle);
   }
+}
+
+void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
+  printf("i2c error\n");
 }
 
 /* USER CODE END 4 */

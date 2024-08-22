@@ -10,8 +10,8 @@
 
 #include "cmsis_os.h"
 
-extern osThreadId_t audio_buf_taskHandle;
 extern osThreadId_t audio_file_taskHandle;
+extern osThreadId_t cam_taskHandle;
 extern osMutexId_t fileMutexHandle;
 extern osMessageQueueId_t audioBufferReadyQueueHandle;
 extern osMessageQueueId_t audio_file_empty_bufHandle;

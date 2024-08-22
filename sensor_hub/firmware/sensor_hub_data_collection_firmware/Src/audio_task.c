@@ -12,7 +12,7 @@
 #include <stdbool.h>
 
 #define RECORDING_LENGTH_MS (2000) //must be multiple of (AUDIO_BUF_HALF_LEN/AUDIO_SAMPLE_RATE*1000) ie buf_half_len in ms
-#define FILE_QUEUE_LENGTH   (16) //16 comes from emptyBuf and fullBuf queue size
+#define FILE_QUEUE_LENGTH   (32) //32 comes from emptyBuf and fullBuf queue size
 
 //todo: do i need to worry about cache invalidation with dma on this hardware?
 int32_t raw_rec_buf[2][AUDIO_BUF_HALF_LEN];
@@ -73,18 +73,24 @@ void StartAudioFileTask(void *argument) {
     osMessageQueuePut(audio_file_empty_bufHandle, (void*)&processed_rec_buf_part, osPriorityNormal, osWaitForever);
   }
 
+  //let cam task finish before copy so that we can power down cam sooner
+  osThreadSetPriority(osThreadGetId(), osPriorityBelowNormal);
+  while(osThreadGetState(cam_taskHandle) != osThreadTerminated) {
+    osDelay(25);
+  }
+
   /* copy temporary wav file to a new file with the current time as the name */
   char file_name[50]; //need 25 bytes
   TimeStamp_GetTimeStampString(file_name);
   strcat(file_name, ".wav");
 
-  printf("copying file...\n");
+  printf("copying audio file...\n");
   osMutexAcquire(fileMutexHandle, osWaitForever);
   //processed_rec_buf is no longer needed so we can reuse it here
   int copy_result = CopyFile("temp_audio_file.wav", file_name, (BYTE*)processed_rec_buf, sizeof(processed_rec_buf));
   osMutexRelease(fileMutexHandle);
 
-  printf("copy_result: %d\n", copy_result);
+  printf("copying audio file done with result: %d\n", copy_result);
 
   osSemaphoreRelease(task_finishedHandle);
   osThreadExit();

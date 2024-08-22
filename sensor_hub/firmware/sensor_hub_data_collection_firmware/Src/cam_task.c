@@ -46,13 +46,14 @@ void StartCamTask(void *argument) {
 
   ArducamInit(&cam);
   ArducamCapture(&cam);
+  printf("picture captured\n");
 
-  osThreadSetPriority(osThreadGetId(), osPriorityBelowNormal1);
   image_size = ArducamChipGetFifoSize(&cam);
   osSemaphoreAcquire(file_system_readyHandle, osWaitForever);
   ArducamReadAndSaveImage(&cam, buffer, BUFFER_SIZE, image_size);
 
   //todo: put cam into low power state
+  ArducamPowerDown(&cam);
   printf("cam task finished\n");
   osSemaphoreRelease(task_finishedHandle);
   osThreadExit();

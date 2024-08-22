@@ -91,7 +91,7 @@ osThreadId_t cam_taskHandle;
 const osThreadAttr_t cam_task_attributes = {
   .name = "cam_task",
   .stack_size = 512 * 4,
-  .priority = (osPriority_t) osPriorityLow,
+  .priority = (osPriority_t) osPriorityBelowNormal6,
 };
 /* Definitions for audioBufferReadyQueue */
 osMessageQueueId_t audioBufferReadyQueueHandle;
@@ -219,10 +219,10 @@ void MX_FREERTOS_Init(void) {
   audioBufferReadyQueueHandle = osMessageQueueNew (1, sizeof(int32_t*), &audioBufferReadyQueue_attributes);
 
   /* creation of audio_file_empty_buf */
-  audio_file_empty_bufHandle = osMessageQueueNew (16, sizeof(float *), &audio_file_empty_buf_attributes);
+  audio_file_empty_bufHandle = osMessageQueueNew (32, sizeof(float *), &audio_file_empty_buf_attributes);
 
   /* creation of audio_file_full_buf */
-  audio_file_full_bufHandle = osMessageQueueNew (16, sizeof(float *), &audio_file_full_buf_attributes);
+  audio_file_full_bufHandle = osMessageQueueNew (32, sizeof(float *), &audio_file_full_buf_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -293,6 +293,8 @@ void StartDefaultTask(void *argument)
   //unmount sd card
   f_mount(&SDFatFS, (TCHAR const*)NULL, 0);
   osThreadTerminate(leds_taskHandle);
+
+  printf("all processes finished after %lu ticks\n", HAL_GetTick());
   //todo: put chip in low power state
   osThreadExit();
   /* USER CODE END StartDefaultTask */
