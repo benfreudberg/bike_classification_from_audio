@@ -11,10 +11,11 @@
 #include <string.h>
 #include <stdbool.h>
 
-#define RECORDING_LENGTH_MS (8000) //must be multiple of (AUDIO_BUF_HALF_LEN/AUDIO_SAMPLE_RATE*1000) -> 20ms
+#define RECORDING_LENGTH_MS (2000) //must be multiple of (AUDIO_BUF_HALF_LEN/AUDIO_SAMPLE_RATE*1000) ie buf_half_len in ms
 #define FILE_QUEUE_LENGTH   (16) //16 comes from emptyBuf and fullBuf queue size
 
-volatile int32_t raw_rec_buf[2][AUDIO_BUF_HALF_LEN];
+//todo: do i need to worry about cache invalidation with dma on this hardware?
+int32_t raw_rec_buf[2][AUDIO_BUF_HALF_LEN];
 static float processed_rec_buf[FILE_QUEUE_LENGTH][AUDIO_BUF_HALF_LEN];
 static int buf_full_count = 0;
 static FSIZE_t file_write_index = 0;
@@ -34,12 +35,17 @@ void StartAudioFileTask(void *argument) {
   res = f_open(&SDFile, "temp_audio_file.wav", FA_CREATE_ALWAYS | FA_WRITE);
   if (res) {
     printf("audio file open failed with result: %d\n", res);
+    osSemaphoreRelease(task_finishedHandle);
+    osMutexRelease(fileMutexHandle);
     osThreadExit();
   }
 
   res = f_write(&SDFile, (const void*)&header, sizeof(WavHeader), (void *)&byteswritten);
   if (res) {
     printf("audio file header write failed with result: %d\n", res);
+    f_close(&SDFile);
+    osSemaphoreRelease(task_finishedHandle);
+    osMutexRelease(fileMutexHandle);
     osThreadExit();
   }
   file_write_index += byteswritten;

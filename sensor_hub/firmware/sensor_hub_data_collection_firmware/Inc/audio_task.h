@@ -9,6 +9,6 @@
 #define AUDIO_BUF_LEN      (AUDIO_SAMPLE_RATE/20*2) //50ms per half
 #define AUDIO_BUF_HALF_LEN (AUDIO_BUF_LEN/2)
 
-extern volatile int32_t raw_rec_buf[2][AUDIO_BUF_HALF_LEN];
+extern int32_t raw_rec_buf[2][AUDIO_BUF_HALF_LEN];
 
 #endif /* AUDIO_TASK_H_ */

@@ -124,6 +124,7 @@ static void SaveMagDataToSdCard(void) {
   res = f_open(&SDFile, file_name, FA_CREATE_ALWAYS | FA_WRITE);
   if (res) {
     printf("csv file open failed with result: %d\n", res);
+    osMutexRelease(fileMutexHandle);
     osThreadExit();
   }
 
@@ -196,6 +197,8 @@ void StartMagTask(void *argument) {
 
   }
   HAL_TIM_Base_Stop_IT(&htim2);
+  printf("finished recording mag data\n");
+  osSemaphoreRelease(i2c2_semHandle);
 
   /* data collection is done, so we can go low priority and wait for audio streaming
    * to finish before saving data to sd card
@@ -204,8 +207,10 @@ void StartMagTask(void *argument) {
   while(osThreadGetState(audio_file_taskHandle) != osThreadTerminated) {
     osDelay(100);
   }
+  osSemaphoreAcquire(file_system_readyHandle, osWaitForever);
   SaveMagDataToSdCard();
 
+  printf("finished saving mag data\n");
   osSemaphoreRelease(task_finishedHandle);
   osThreadExit();
 }

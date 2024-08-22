@@ -56,14 +56,14 @@ osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
   .stack_size = 512 * 4,
-  .priority = (osPriority_t) osPriorityLow,
+  .priority = (osPriority_t) osPriorityLow2,
 };
 /* Definitions for leds_task */
 osThreadId_t leds_taskHandle;
 const osThreadAttr_t leds_task_attributes = {
   .name = "leds_task",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityLow,
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityLow1,
 };
 /* Definitions for audio_buf_task */
 osThreadId_t audio_buf_taskHandle;
@@ -85,6 +85,13 @@ const osThreadAttr_t mag_task_attributes = {
   .name = "mag_task",
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityAboveNormal,
+};
+/* Definitions for cam_task */
+osThreadId_t cam_taskHandle;
+const osThreadAttr_t cam_task_attributes = {
+  .name = "cam_task",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for audioBufferReadyQueue */
 osMessageQueueId_t audioBufferReadyQueueHandle;
@@ -121,6 +128,11 @@ osSemaphoreId_t tim2_semHandle;
 const osSemaphoreAttr_t tim2_sem_attributes = {
   .name = "tim2_sem"
 };
+/* Definitions for i2c2_sem */
+osSemaphoreId_t i2c2_semHandle;
+const osSemaphoreAttr_t i2c2_sem_attributes = {
+  .name = "i2c2_sem"
+};
 /* Definitions for file_system_ready */
 osSemaphoreId_t file_system_readyHandle;
 const osSemaphoreAttr_t file_system_ready_attributes = {
@@ -141,6 +153,7 @@ extern void StartLedsTask(void *argument);
 extern void StartAudioBufTask(void *argument);
 extern void StartAudioFileTask(void *argument);
 extern void StartMagTask(void *argument);
+extern void StartCamTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -183,6 +196,9 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of tim2_sem */
   tim2_semHandle = osSemaphoreNew(1, 0, &tim2_sem_attributes);
+
+  /* creation of i2c2_sem */
+  i2c2_semHandle = osSemaphoreNew(1, 0, &i2c2_sem_attributes);
 
   /* creation of file_system_ready */
   file_system_readyHandle = osSemaphoreNew(3, 0, &file_system_ready_attributes);
@@ -228,6 +244,9 @@ void MX_FREERTOS_Init(void) {
   /* creation of mag_task */
   mag_taskHandle = osThreadNew(StartMagTask, NULL, &mag_task_attributes);
 
+  /* creation of cam_task */
+  cam_taskHandle = osThreadNew(StartCamTask, NULL, &cam_task_attributes);
+
   /* USER CODE BEGIN RTOS_THREADS */
   /* USER CODE END RTOS_THREADS */
 
@@ -259,22 +278,15 @@ void StartDefaultTask(void *argument)
   res = f_mkfs((TCHAR const*)SDPath, FM_FAT32, 0, rtext, sizeof(rtext));
   if (res) {
     printf("sd reformat failed with result: %d\n", res);
-    osThreadExit();
   }
+  osThreadExit();
 #endif
 
-  //todo: delete
-  uint32_t byteswritten;
-  char file_name[50] = "test_image";
-  strcat(file_name, ".jpg");
-  f_open(&SDFile, file_name, FA_CREATE_ALWAYS | FA_WRITE);
-  f_write(&SDFile, image_data, image_size, (void *)&byteswritten);
-  f_close(&SDFile);
 
   while(osSemaphoreRelease(file_system_readyHandle) == osOK); //inform all threads that the file system is ready
 
   //wait for all data collection threads to indicate they are done
-  for (int i = 0; i < 2; i++) { //will be 3 when we have audio, mag, and camera threads implemented
+  for (int i = 0; i < 3; i++) { //audio, mag, and camera threads all indicate they are finished
     osSemaphoreAcquire(task_finishedHandle, osWaitForever);
   }
 

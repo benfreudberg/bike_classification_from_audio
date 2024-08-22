@@ -36,9 +36,7 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-//todo: delete
-extern uint8_t image_data[10240]; //10kB
-extern int image_size;
+
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
