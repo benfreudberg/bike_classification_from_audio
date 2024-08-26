@@ -9,7 +9,6 @@
 #include "spi.h"
 #include "gpio.h"
 #include "mmc5983ma_dev.h"
-#include "tim.h"
 #include "fatfs.h"
 #include "timestamp.h"
 #include <stdint.h>
@@ -17,8 +16,9 @@
 #include <stdio.h>
 #include <string.h>
 
-#define NUM_MAGS        (2)
-#define NUM_DATA_POINTS (2000) //2 seconds of data at 1kHz
+#define NUM_MAGS              (2)
+#define NUM_DATA_POINTS       (200) //2 seconds of data at 100Hz
+#define SKIP_FIRST_POINTS_NUM (3)
 
 static int collected_data[NUM_DATA_POINTS][NUM_MAGS][3];
 
@@ -164,7 +164,7 @@ void StartMagTask(void *argument) {
 
   for (int i = 0; i < NUM_MAGS; i++) {
     if (mag_exists[i]) {
-      SetMagSpeed(mags[i], ODR800);
+      SetMagSpeed(mags[i], ODR100);
     }
   }
 
@@ -174,17 +174,21 @@ void StartMagTask(void *argument) {
     }
   }
 
-  HAL_TIM_Base_Start_IT(&htim2);
+  uint32_t delay_until_tick = osKernelGetTickCount() + 10;
 
-  for (int n = 0; n < NUM_DATA_POINTS + 1; n++) {
-    osSemaphoreAcquire(tim2_semHandle, osWaitForever);
+  for (int n = 0; n < NUM_DATA_POINTS + SKIP_FIRST_POINTS_NUM; n++) {
+    osDelayUntil(delay_until_tick);
+    if(delay_until_tick != osKernelGetTickCount()) {
+      printf("WARNING: mag timing off. %lu ticks late\n", osKernelGetTickCount() - delay_until_tick);
+    }
+    delay_until_tick += 10;
 
     for (int i = 0; i < NUM_MAGS; i++) {
       if (mag_exists[i]) {
         ReadMagMeasurement(mags[i], readings);
-        if (n) { //skip the first reading
+        if (n >= SKIP_FIRST_POINTS_NUM) { //skip the few readings
           for (int j = 0; j < 3; j++) {
-            collected_data[n-1][i][j] = readings[j];
+            collected_data[n-SKIP_FIRST_POINTS_NUM][i][j] = readings[j];
           }
         }
       }
@@ -194,15 +198,13 @@ void StartMagTask(void *argument) {
         StartMagMeasurement(mags[i]);
       }
     }
-
   }
-  HAL_TIM_Base_Stop_IT(&htim2);
+
   printf("finished recording mag data\n");
 
-  /* data collection is done, so we can go low priority and wait for audio streaming
+  /* data collection is done, so we can wait for audio streaming
    * to finish before saving data to sd card
    */
-  osThreadSetPriority(osThreadGetId(), osPriorityBelowNormal);
   while(osThreadGetState(audio_file_taskHandle) != osThreadTerminated) {
     osDelay(25);
   }

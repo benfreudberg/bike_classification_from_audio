@@ -15,7 +15,7 @@
 #define FILE_QUEUE_LENGTH   (32) //32 comes from emptyBuf and fullBuf queue size
 
 //todo: do i need to worry about cache invalidation with dma on this hardware?
-int32_t raw_rec_buf[2][AUDIO_BUF_HALF_LEN];
+static int32_t raw_rec_buf[2][AUDIO_BUF_HALF_LEN];
 static float processed_rec_buf[FILE_QUEUE_LENGTH][AUDIO_BUF_HALF_LEN];
 static int buf_full_count = 0;
 static FSIZE_t file_write_index = 0;
@@ -71,6 +71,7 @@ void StartAudioFileTask(void *argument) {
     osMutexRelease(fileMutexHandle);
 
     osMessageQueuePut(audio_file_empty_bufHandle, (void*)&processed_rec_buf_part, osPriorityNormal, osWaitForever);
+//    printf("audio file task stack space: %u\n", osThreadGetStackSpace(osThreadGetId()));
   }
 
   //let cam task finish before copy so that we can power down cam sooner
@@ -101,6 +102,9 @@ void StartAudioBufTask(void *argument) {
   float * processed_rec_buf_part;
   bool finished = false;
   uint32_t available_bufs_low_point = 9999;
+
+  HAL_DFSDM_FilterRegularStart_DMA(&hdfsdm1_filter0, (int32_t*)&raw_rec_buf[0][0], AUDIO_BUF_LEN);
+  HAL_GPIO_WritePin(GPIOE, LED2_Pin, GPIO_PIN_SET);
 
   //initialize audio_file_empty_buf queue
   for (int i = 0; i < FILE_QUEUE_LENGTH; i++) {
@@ -142,6 +146,7 @@ void StartAudioBufTask(void *argument) {
     }
 
     if (finished) {
+      HAL_GPIO_WritePin(GPIOE, LED2_Pin, GPIO_PIN_RESET);
       printf("available bufs low point: %lu\n", available_bufs_low_point);
       processed_rec_buf_part = NULL; //NULL is a marker to indicate that we are done streaming
       osMessageQueuePut(audio_file_full_bufHandle, (void*)&processed_rec_buf_part, osPriorityNormal, 0);

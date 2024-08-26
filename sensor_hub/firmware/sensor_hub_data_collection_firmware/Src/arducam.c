@@ -69,13 +69,11 @@ static void SensorWriteRegList(const Arducam *cam, const SensorRegValPair * cons
 
 static void ChipWriteReg(const Arducam *cam, uint8_t reg_id, uint8_t val) {
   uint8_t tx_data[2] = {reg_id|CHIP_REG_WRITE_BIT, val};
-  uint8_t rx_data[2];
 
   HAL_GPIO_WritePin(GPIOB, SPI2_CS_Pin, GPIO_PIN_RESET);
-  HAL_SPI_TransmitReceive_DMA(cam->hspi,
-                              tx_data,
-                              rx_data,
-                              2);
+  HAL_SPI_Transmit_DMA(cam->hspi,
+                       tx_data,
+                       2);
   osSemaphoreAcquire(*cam->spi_semHandle, osWaitForever);
   HAL_GPIO_WritePin(GPIOB, SPI2_CS_Pin, GPIO_PIN_SET);
 }
@@ -96,18 +94,15 @@ static uint8_t ChipReadReg(const Arducam *cam, uint8_t reg_id) {
 
 static void ChipBurstReadFifo(const Arducam *cam, uint8_t *data, uint32_t length) {
   uint8_t command = ARDUCHIP_BURST_FIFO_READ;
-  uint8_t tx_data[length];
 
   HAL_GPIO_WritePin(GPIOB, SPI2_CS_Pin, GPIO_PIN_RESET);
-  HAL_SPI_TransmitReceive_DMA(cam->hspi,
-                              &command,
-                              data,
-                              1);
+  HAL_SPI_Transmit_DMA(cam->hspi,
+                       &command,
+                       1);
   osSemaphoreAcquire(*cam->spi_semHandle, osWaitForever);
-  HAL_SPI_TransmitReceive_DMA(cam->hspi,
-                              tx_data,
-                              data,
-                              length);
+  HAL_SPI_Receive_DMA(cam->hspi,
+                      data,
+                      length);
   osSemaphoreAcquire(*cam->spi_semHandle, osWaitForever);
   HAL_GPIO_WritePin(GPIOB, SPI2_CS_Pin, GPIO_PIN_SET);
 }
@@ -163,7 +158,7 @@ void ArducamInit(const Arducam *cam) {
   SensorWriteReg(cam, 0x15, 0x00);
   SensorWriteRegList(cam, OV2640_1024x768_JPEG);
 
-  osDelay(300);
+  osDelay(400);
   ChipWriteReg(cam, ARDUCHIP_FIFO, ARDUCHIP_FIFO_CLEAR_BIT);
   ChipWriteReg(cam, ARDUCHIP_FRAMES, 0);
 }

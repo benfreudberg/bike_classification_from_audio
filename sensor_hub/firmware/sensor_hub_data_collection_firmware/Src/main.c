@@ -26,13 +26,11 @@
 #include "rtc.h"
 #include "sdmmc.h"
 #include "spi.h"
-#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "audio_task.h"
 #include "timestamp.h"
 #include "freertos_vars.h"
 #include "arducam.h"
@@ -115,10 +113,8 @@ int main(void)
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
   MX_RTC_Init();
-  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
-  //microphone
-  HAL_DFSDM_FilterRegularStart_DMA(&hdfsdm1_filter0, (int32_t*)&raw_rec_buf[0][0], AUDIO_BUF_LEN);
+  HAL_GPIO_WritePin(GPIOE, LED1_Pin, GPIO_PIN_SET);
 
   //RTC time
 #if 0 //set RTC time
@@ -238,12 +234,24 @@ int _write(int file, char *ptr, int len)
   return len;
 }
 
-void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi) {
+static inline void SpiCallback(SPI_HandleTypeDef *hspi) {
   if (hspi == &hspi1) { //mags
     osSemaphoreRelease(spi1_semHandle);
   } else if (hspi == &hspi2) { //cam
     osSemaphoreRelease(spi2_semHandle);
   }
+}
+
+void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi) {
+  SpiCallback(hspi);
+}
+
+void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi) {
+  SpiCallback(hspi);
+}
+
+void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi) {
+  SpiCallback(hspi);
 }
 
 void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c) {
@@ -260,6 +268,9 @@ void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c) {
 
 void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
   printf("i2c error\n");
+  if (hi2c == &hi2c2) {
+    osSemaphoreRelease(i2c2_semHandle);
+  }
 }
 
 /* USER CODE END 4 */
@@ -281,9 +292,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-  if (htim->Instance == TIM2) {
-    osSemaphoreRelease(tim2_semHandle);
-  }
+
   /* USER CODE END Callback 1 */
 }
 

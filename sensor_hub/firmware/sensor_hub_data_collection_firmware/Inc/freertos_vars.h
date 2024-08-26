@@ -21,6 +21,5 @@ extern osSemaphoreId_t task_finishedHandle;
 extern osSemaphoreId_t spi1_semHandle;
 extern osSemaphoreId_t spi2_semHandle;
 extern osSemaphoreId_t i2c2_semHandle;
-extern osSemaphoreId_t tim2_semHandle;
 
 #endif /* FREERTOS_VARS_H_ */

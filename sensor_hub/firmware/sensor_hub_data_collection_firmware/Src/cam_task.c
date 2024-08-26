@@ -52,7 +52,6 @@ void StartCamTask(void *argument) {
   osSemaphoreAcquire(file_system_readyHandle, osWaitForever);
   ArducamReadAndSaveImage(&cam, buffer, BUFFER_SIZE, image_size);
 
-  //todo: put cam into low power state
   ArducamPowerDown(&cam);
   printf("cam task finished\n");
   osSemaphoreRelease(task_finishedHandle);

@@ -25,7 +25,6 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "audio_task.h"
 #include "fatfs.h"
 #include "spi.h"
 #include <stdio.h>
@@ -58,13 +57,6 @@ const osThreadAttr_t defaultTask_attributes = {
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityLow2,
 };
-/* Definitions for leds_task */
-osThreadId_t leds_taskHandle;
-const osThreadAttr_t leds_task_attributes = {
-  .name = "leds_task",
-  .stack_size = 256 * 4,
-  .priority = (osPriority_t) osPriorityLow1,
-};
 /* Definitions for audio_buf_task */
 osThreadId_t audio_buf_taskHandle;
 const osThreadAttr_t audio_buf_task_attributes = {
@@ -90,7 +82,7 @@ const osThreadAttr_t mag_task_attributes = {
 osThreadId_t cam_taskHandle;
 const osThreadAttr_t cam_task_attributes = {
   .name = "cam_task",
-  .stack_size = 512 * 4,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityBelowNormal6,
 };
 /* Definitions for audioBufferReadyQueue */
@@ -123,11 +115,6 @@ osSemaphoreId_t spi2_semHandle;
 const osSemaphoreAttr_t spi2_sem_attributes = {
   .name = "spi2_sem"
 };
-/* Definitions for tim2_sem */
-osSemaphoreId_t tim2_semHandle;
-const osSemaphoreAttr_t tim2_sem_attributes = {
-  .name = "tim2_sem"
-};
 /* Definitions for i2c2_sem */
 osSemaphoreId_t i2c2_semHandle;
 const osSemaphoreAttr_t i2c2_sem_attributes = {
@@ -149,7 +136,6 @@ const osSemaphoreAttr_t task_finished_attributes = {
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
-extern void StartLedsTask(void *argument);
 extern void StartAudioBufTask(void *argument);
 extern void StartAudioFileTask(void *argument);
 extern void StartMagTask(void *argument);
@@ -167,6 +153,13 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, signed char *pcTaskName)
    configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2. This hook function is
    called if a stack overflow is detected. */
   printf("stack overflow detected on task: %s\n", pcTaskName);
+}
+
+static void SystemShutdown(void) {
+  osKernelLock();
+  __disable_irq();
+  //other power modes could save more power, but then debugger can't connect
+  HAL_PWR_EnterSLEEPMode(PWR_LOWPOWERREGULATOR_ON, PWR_SLEEPENTRY_WFI);
 }
 /* USER CODE END 4 */
 
@@ -193,9 +186,6 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of spi2_sem */
   spi2_semHandle = osSemaphoreNew(1, 0, &spi2_sem_attributes);
-
-  /* creation of tim2_sem */
-  tim2_semHandle = osSemaphoreNew(1, 0, &tim2_sem_attributes);
 
   /* creation of i2c2_sem */
   i2c2_semHandle = osSemaphoreNew(1, 0, &i2c2_sem_attributes);
@@ -231,9 +221,6 @@ void MX_FREERTOS_Init(void) {
   /* Create the thread(s) */
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
-
-  /* creation of leds_task */
-  leds_taskHandle = osThreadNew(StartLedsTask, NULL, &leds_task_attributes);
 
   /* creation of audio_buf_task */
   audio_buf_taskHandle = osThreadNew(StartAudioBufTask, NULL, &audio_buf_task_attributes);
@@ -282,6 +269,19 @@ void StartDefaultTask(void *argument)
   osThreadExit();
 #endif
 
+  DWORD nclst;
+  FATFS *SDFatFS_ptr = &SDFatFS;
+  float free_space_MB;
+  f_getfree((TCHAR const*)SDPath, &nclst, &SDFatFS_ptr);
+  free_space_MB = (float)nclst * SDFatFS.csize * 512 / (1 << 20);
+  printf("freespace: %.2fMB\n", free_space_MB);
+  if (free_space_MB < 5) {
+    HAL_GPIO_WritePin(GPIOE, LED1_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOE, LED2_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOE, LED3_Pin, GPIO_PIN_SET);
+    printf("ERROR: sd card has less than 5 MB free\n");
+    SystemShutdown();
+  }
 
   while(osSemaphoreRelease(file_system_readyHandle) == osOK); //inform all threads that the file system is ready
 
@@ -292,11 +292,11 @@ void StartDefaultTask(void *argument)
 
   //unmount sd card
   f_mount(&SDFatFS, (TCHAR const*)NULL, 0);
-  osThreadTerminate(leds_taskHandle);
 
+  HAL_GPIO_WritePin(GPIOE, LED1_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, LED3_Pin, GPIO_PIN_SET);
   printf("all processes finished after %lu ticks\n", HAL_GetTick());
-  //todo: put chip in low power state
-  osThreadExit();
+  SystemShutdown();
   /* USER CODE END StartDefaultTask */
 }
 
