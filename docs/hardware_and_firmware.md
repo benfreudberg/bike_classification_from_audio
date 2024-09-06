@@ -17,7 +17,7 @@ See https://github.com/chipmc/Connected-Counter-Next/pull/9
 ### Data Collection
 
 The first phase of the deployment will have the Sensor Hub programmed to collect 2 seconds of data from the microphone and each magnetometer as well as a photograph from the camera. This data will be saved to the SD card. Later, data samples will be manually tagged using the photograph from each event for use in machine learning model training.  
-See [sensor_hub_data_collection_firmware](/sensor_hub/firmware/sensor_hub_data_collection_firmware/).
+See [sensor_hub_data_collection_firmware](https://github.com/benfreudberg/bike_identification/tree/main/sensor_hub/firmware/sensor_hub_data_collection_firmware).
 
 ### Event Categorization
 
