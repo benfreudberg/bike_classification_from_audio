@@ -265,6 +265,8 @@ void StartDefaultTask(void *argument)
   res = f_mkfs((TCHAR const*)SDPath, FM_FAT32, 0, rtext, sizeof(rtext));
   if (res) {
     printf("sd reformat failed with result: %d\n", res);
+  } else {
+    printf("sd card reformated\n");
   }
   osThreadExit();
 #endif

@@ -114,21 +114,22 @@ int main(void)
   MX_USART2_UART_Init();
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
+  printf("this firmware was compiled on %s at %s\n", __DATE__, __TIME__);
   HAL_GPIO_WritePin(GPIOE, LED1_Pin, GPIO_PIN_SET);
 
   //RTC time
 #if 0 //set RTC time
-  RTC_TimeTypeDef sTime;
-  RTC_DateTypeDef sDate;
+  RTC_TimeTypeDef sTime = {0};
+  RTC_DateTypeDef sDate = {0};
   HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
   HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
-  sTime.Seconds = 0;
-  sTime.Minutes = 24;
-  sTime.Hours = 18;
-  sDate.Date = 6;
-  sDate.Month = 8;
+  sTime.Seconds = 20;
+  sTime.Minutes = 19;
+  sTime.Hours = 12;
+  sDate.Date = 4;
+  sDate.Month = 9;
   sDate.Year = 44;
-  sDate.WeekDay = RTC_WEEKDAY_TUESDAY;
+  sDate.WeekDay = RTC_WEEKDAY_WEDNESDAY;
   HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
   HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
 #endif
@@ -136,6 +137,7 @@ int main(void)
   char timestamp[50]; //need 21 bytes
   TimeStamp_GetTimeStampString(timestamp);
   printf("timestamp is %s\n", timestamp);
+  printf("rtc CR register value: %lu\n", hrtc.Instance->CR);
 
   //enable backup battery charging
   HAL_PWREx_EnableBatteryCharging(PWR_BATTERY_CHARGING_RESISTOR_5);
@@ -189,7 +191,7 @@ void SystemClock_Config(void)
   /** Configure LSE Drive Capability
   */
   HAL_PWR_EnableBkUpAccess();
-  __HAL_RCC_LSEDRIVE_CONFIG(RCC_LSEDRIVE_LOW);
+  __HAL_RCC_LSEDRIVE_CONFIG(RCC_LSEDRIVE_MEDIUMLOW);
 
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.

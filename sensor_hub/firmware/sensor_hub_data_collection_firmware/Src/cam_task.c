@@ -46,9 +46,9 @@ void StartCamTask(void *argument) {
 
   ArducamInit(&cam);
   ArducamCapture(&cam);
-  printf("picture captured\n");
 
   image_size = ArducamChipGetFifoSize(&cam);
+  printf("picture captured of size: %lukB\n", image_size/1024);
   osSemaphoreAcquire(file_system_readyHandle, osWaitForever);
   ArducamReadAndSaveImage(&cam, buffer, BUFFER_SIZE, image_size);
 
