@@ -11,7 +11,7 @@ Wires in bench test setup shown above are shorter than the outdoor system will b
 
 ## Firmware
 
-The Particle firmware will be configured to supply power to the Sensor Hub for 3 seconds (or until the Sensor Hub indicates it is ready to be shut down) each time the motion sensor is triggered.
+The Particle firmware will be configured to supply power to the Sensor Hub for 5 seconds (or until the Sensor Hub indicates it is ready to be shut down) each time the motion sensor is triggered.
 
 ### Data Collection
 
