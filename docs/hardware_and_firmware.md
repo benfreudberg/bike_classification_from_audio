@@ -11,11 +11,13 @@ Wires in bench test setup shown above are shorter than the outdoor system will b
 
 ## Firmware
 
-The Particle firmware will be configured to supply power to the Sensor Hub for 5 seconds (or until the Sensor Hub indicates it is ready to be shut down) each time the motion sensor is triggered.
+The Particle firmware will be configured to supply power to the Sensor Hub for 5 seconds (or until the Sensor Hub indicates it is ready to be shut down) each time the motion sensor is triggered.  
+See https://github.com/chipmc/Connected-Counter-Next/pull/9
 
 ### Data Collection
 
-The first phase of the deployment will have the Sensor Hub programmed to collect 2 seconds of data from the microphone and each magnetometer as well as a photograph from the camera. This data will be saved to the SD card. Later, data samples will be manually tagged using the photograph from each event for use in machine learning model training.
+The first phase of the deployment will have the Sensor Hub programmed to collect 2 seconds of data from the microphone and each magnetometer as well as a photograph from the camera. This data will be saved to the SD card. Later, data samples will be manually tagged using the photograph from each event for use in machine learning model training.  
+See [sensor_hub_data_collection_firmware](/sensor_hub/firmware/sensor_hub_data_collection_firmware).
 
 ### Event Categorization
 
