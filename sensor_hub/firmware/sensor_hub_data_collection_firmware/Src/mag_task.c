@@ -147,71 +147,78 @@ void StartMagTask(void *argument) {
   bool mag_exists[NUM_MAGS];
   const Mag * const mags[] = {&mag1, &mag2};
   int readings[3];
+  uint32_t delay_until_tick;
 
   for (int i = 0; i < NUM_MAGS; i++) {
     mag_exists[i] = MagExists(mags[i]);
     printf("mag%d exists? %d\n", i+1, mag_exists[i]);
   }
 
-#if 0
-  for (int i = 0; i < NUM_MAGS; i++) {
-    if (mag_exists[i]) {
-      SetMag(mags[i]);
-      ResetMag(mags[i]);
-    }
-  }
-#endif
+  if (mag_exists[0] || mag_exists[1]) {
 
-  for (int i = 0; i < NUM_MAGS; i++) {
-    if (mag_exists[i]) {
-      SetMagSpeed(mags[i], ODR100);
+  #if 0
+    for (int i = 0; i < NUM_MAGS; i++) {
+      if (mag_exists[i]) {
+        SetMag(mags[i]);
+        ResetMag(mags[i]);
+      }
     }
-  }
-
-  for (int i = 0; i < NUM_MAGS; i++) {
-    if (mag_exists[i]) {
-      StartMagMeasurement(mags[i]);
-    }
-  }
-
-  uint32_t delay_until_tick = osKernelGetTickCount() + 10;
-
-  for (int n = 0; n < NUM_DATA_POINTS + SKIP_FIRST_POINTS_NUM; n++) {
-    osDelayUntil(delay_until_tick);
-    if(delay_until_tick != osKernelGetTickCount()) {
-      printf("WARNING: mag timing off. %lu ticks late\n", osKernelGetTickCount() - delay_until_tick);
-    }
-    delay_until_tick += 10;
+  #endif
 
     for (int i = 0; i < NUM_MAGS; i++) {
       if (mag_exists[i]) {
-        ReadMagMeasurement(mags[i], readings);
-        if (n >= SKIP_FIRST_POINTS_NUM) { //skip the few readings
-          for (int j = 0; j < 3; j++) {
-            collected_data[n-SKIP_FIRST_POINTS_NUM][i][j] = readings[j];
-          }
-        }
+        SetMagSpeed(mags[i], ODR100);
       }
     }
+
     for (int i = 0; i < NUM_MAGS; i++) {
       if (mag_exists[i]) {
         StartMagMeasurement(mags[i]);
       }
     }
+
+    delay_until_tick = osKernelGetTickCount() + 10;
+
+    for (int n = 0; n < NUM_DATA_POINTS + SKIP_FIRST_POINTS_NUM; n++) {
+      osDelayUntil(delay_until_tick);
+      if(delay_until_tick != osKernelGetTickCount()) {
+        printf("WARNING: mag timing off. %lu ticks late\n", osKernelGetTickCount() - delay_until_tick);
+      }
+      delay_until_tick += 10;
+
+      for (int i = 0; i < NUM_MAGS; i++) {
+        if (mag_exists[i]) {
+          ReadMagMeasurement(mags[i], readings);
+          if (n >= SKIP_FIRST_POINTS_NUM) { //skip the first few readings
+            for (int j = 0; j < 3; j++) {
+              collected_data[n-SKIP_FIRST_POINTS_NUM][i][j] = readings[j];
+            }
+          }
+        }
+      }
+      for (int i = 0; i < NUM_MAGS; i++) {
+        if (mag_exists[i]) {
+          StartMagMeasurement(mags[i]);
+        }
+      }
+    }
+
+    printf("finished recording mag data\n");
+
+    /* data collection is done, so we can wait for audio streaming
+     * to finish before saving data to sd card
+     */
+    while(osThreadGetState(audio_file_taskHandle) != osThreadTerminated) {
+      osDelay(25);
+    }
+    osSemaphoreAcquire(file_system_readyHandle, osWaitForever);
+    SaveMagDataToSdCard();
+
+    printf("finished saving mag data\n");
   }
-
-  printf("finished recording mag data\n");
-
-  /* data collection is done, so we can wait for audio streaming
-   * to finish before saving data to sd card
-   */
-  while(osThreadGetState(audio_file_taskHandle) != osThreadTerminated) {
-    osDelay(25);
+  else {
+    printf("no mags connected\n");
   }
-  osSemaphoreAcquire(file_system_readyHandle, osWaitForever);
-  SaveMagDataToSdCard();
-
-  printf("finished saving mag data\n");
   osSemaphoreRelease(task_finishedHandle);
   osThreadExit();
 }

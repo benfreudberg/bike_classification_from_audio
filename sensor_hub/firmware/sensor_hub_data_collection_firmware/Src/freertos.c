@@ -158,6 +158,8 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, signed char *pcTaskName)
 static void SystemShutdown(void) {
   osKernelLock();
   __disable_irq();
+  //set INT_OUT pin to inform Particle that power to Sensor Hub can be shut off
+  HAL_GPIO_WritePin(INT_OUT_GPIO_Port, INT_OUT_Pin, GPIO_PIN_SET);
   //other power modes could save more power, but then debugger can't connect
   HAL_PWR_EnterSLEEPMode(PWR_LOWPOWERREGULATOR_ON, PWR_SLEEPENTRY_WFI);
 }
@@ -278,14 +280,19 @@ void StartDefaultTask(void *argument)
   free_space_MB = (float)nclst * SDFatFS.csize * 512 / (1 << 20);
   printf("freespace: %.2fMB\n", free_space_MB);
   if (free_space_MB < 5) {
-    HAL_GPIO_WritePin(GPIOE, LED1_Pin, GPIO_PIN_SET);
-    HAL_GPIO_WritePin(GPIOE, LED2_Pin, GPIO_PIN_SET);
+    //turn on red LED to indicate SD card error
     HAL_GPIO_WritePin(GPIOE, LED3_Pin, GPIO_PIN_SET);
     printf("ERROR: sd card has less than 5 MB free\n");
+    osDelay(25);
     SystemShutdown();
   }
 
   while(osSemaphoreRelease(file_system_readyHandle) == osOK); //inform all threads that the file system is ready
+
+  //flash green led to indicate no issues with SD card
+  HAL_GPIO_WritePin(GPIOE, LED1_Pin, GPIO_PIN_SET);
+  osDelay(50);
+  HAL_GPIO_WritePin(GPIOE, LED1_Pin, GPIO_PIN_RESET);
 
   //wait for all data collection threads to indicate they are done
   for (int i = 0; i < 3; i++) { //audio, mag, and camera threads all indicate they are finished
@@ -295,8 +302,8 @@ void StartDefaultTask(void *argument)
   //unmount sd card
   f_mount(&SDFatFS, (TCHAR const*)NULL, 0);
 
-  HAL_GPIO_WritePin(GPIOE, LED1_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(GPIOE, LED3_Pin, GPIO_PIN_SET);
+  //turn on orange LED to indicate processing finished
+  HAL_GPIO_WritePin(GPIOE, LED2_Pin, GPIO_PIN_SET);
   printf("all processes finished after %lu ticks\n", HAL_GetTick());
   SystemShutdown();
   /* USER CODE END StartDefaultTask */

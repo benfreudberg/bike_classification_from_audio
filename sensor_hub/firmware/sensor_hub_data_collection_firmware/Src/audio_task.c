@@ -104,7 +104,6 @@ void StartAudioBufTask(void *argument) {
   uint32_t available_bufs_low_point = 9999;
 
   HAL_DFSDM_FilterRegularStart_DMA(&hdfsdm1_filter0, (int32_t*)&raw_rec_buf[0][0], AUDIO_BUF_LEN);
-  HAL_GPIO_WritePin(GPIOE, LED2_Pin, GPIO_PIN_SET);
 
   //initialize audio_file_empty_buf queue
   for (int i = 0; i < FILE_QUEUE_LENGTH; i++) {
@@ -146,7 +145,6 @@ void StartAudioBufTask(void *argument) {
     }
 
     if (finished) {
-      HAL_GPIO_WritePin(GPIOE, LED2_Pin, GPIO_PIN_RESET);
       printf("available bufs low point: %lu\n", available_bufs_low_point);
       processed_rec_buf_part = NULL; //NULL is a marker to indicate that we are done streaming
       osMessageQueuePut(audio_file_full_bufHandle, (void*)&processed_rec_buf_part, osPriorityNormal, 0);

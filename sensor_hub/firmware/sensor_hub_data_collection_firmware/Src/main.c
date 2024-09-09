@@ -115,7 +115,6 @@ int main(void)
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
   printf("this firmware was compiled on %s at %s\n", __DATE__, __TIME__);
-  HAL_GPIO_WritePin(GPIOE, LED1_Pin, GPIO_PIN_SET);
 
   //RTC time
 #if 0 //set RTC time
