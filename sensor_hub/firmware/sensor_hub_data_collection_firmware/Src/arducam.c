@@ -70,32 +70,32 @@ static void SensorWriteRegList(const Arducam *cam, const SensorRegValPair * cons
 static void ChipWriteReg(const Arducam *cam, uint8_t reg_id, uint8_t val) {
   uint8_t tx_data[2] = {reg_id|CHIP_REG_WRITE_BIT, val};
 
-  HAL_GPIO_WritePin(GPIOB, SPI2_CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(cam->cs_port, cam->cs_pin, GPIO_PIN_RESET);
   HAL_SPI_Transmit_DMA(cam->hspi,
                        tx_data,
                        2);
   osSemaphoreAcquire(*cam->spi_semHandle, osWaitForever);
-  HAL_GPIO_WritePin(GPIOB, SPI2_CS_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(cam->cs_port, cam->cs_pin, GPIO_PIN_SET);
 }
 
 static uint8_t ChipReadReg(const Arducam *cam, uint8_t reg_id) {
   uint8_t tx_data[2] = {reg_id, 0};
   uint8_t rx_data[2];
 
-  HAL_GPIO_WritePin(GPIOB, SPI2_CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(cam->cs_port, cam->cs_pin, GPIO_PIN_RESET);
   HAL_SPI_TransmitReceive_DMA(cam->hspi,
                               tx_data,
                               rx_data,
                               2);
   osSemaphoreAcquire(*cam->spi_semHandle, osWaitForever);
-  HAL_GPIO_WritePin(GPIOB, SPI2_CS_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(cam->cs_port, cam->cs_pin, GPIO_PIN_SET);
   return rx_data[1];
 }
 
 static void ChipBurstReadFifo(const Arducam *cam, uint8_t *data, uint32_t length) {
   uint8_t command = ARDUCHIP_BURST_FIFO_READ;
 
-  HAL_GPIO_WritePin(GPIOB, SPI2_CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(cam->cs_port, cam->cs_pin, GPIO_PIN_RESET);
   HAL_SPI_Transmit_DMA(cam->hspi,
                        &command,
                        1);
@@ -104,7 +104,7 @@ static void ChipBurstReadFifo(const Arducam *cam, uint8_t *data, uint32_t length
                       data,
                       length);
   osSemaphoreAcquire(*cam->spi_semHandle, osWaitForever);
-  HAL_GPIO_WritePin(GPIOB, SPI2_CS_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(cam->cs_port, cam->cs_pin, GPIO_PIN_SET);
 }
 
 /* public functions */

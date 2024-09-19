@@ -162,6 +162,7 @@ static void SystemShutdown(void) {
   HAL_GPIO_WritePin(INT_OUT_GPIO_Port, INT_OUT_Pin, GPIO_PIN_SET);
   //other power modes could save more power, but then debugger can't connect
   HAL_PWR_EnterSLEEPMode(PWR_LOWPOWERREGULATOR_ON, PWR_SLEEPENTRY_WFI);
+  osThreadExit();
 }
 /* USER CODE END 4 */
 
